@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modpilot"
+version = "0.1.0"
+description = "Lightweight AI-assisted multi-game mod manager for Windows"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "ModPilot contributors" }]
+keywords = ["mods", "stardew-valley", "nexus-mods", "translation", "diagnostics"]
+dependencies = [
+    "PySide6>=6.7,<7",
+    "SQLAlchemy>=2.0,<3",
+    "pydantic>=2.7,<3",
+    "httpx>=0.27,<1",
+    "keyring>=25",
+    "packaging>=24",
+    "py7zr>=0.21,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-timeout>=2.3",
+    "pyinstaller>=6.6",
+    "ruff>=0.6",
+]
+
+[project.gui-scripts]
+modpilot = "modpilot.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["modpilot*"]
+
+[tool.setuptools.package-data]
+modpilot = [
+    "resources/**/*",
+    "adapters/stardew/data/*.json",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+timeout = 120
+filterwarnings = [
+    "ignore::DeprecationWarning:sqlalchemy.*",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "description": "Curated, evidence-based known issue rules. Intentionally empty by default: ModPilot will not claim that a mod combination is incompatible without a verified source. Add rules only with a publicly verifiable source.",
+  "rule_fields": {
+    "id": "Stable rule identifier",
+    "title": "Short user-facing title",
+    "description": "What is known and why",
+    "severity": "warning | error | critical",
+    "certainty": "known | confirmed",
+    "category": "compatibility | version_mismatch | missing_dependency | config | other",
+    "match_unique_ids": "All of these installed UniqueIDs must be present",
+    "max_versions": "Optional map of UniqueID to the last affected version",
+    "recommendation": "Actionable fix",
+    "source": "Public URL supporting this rule"
+  },
+  "rules": []
+}

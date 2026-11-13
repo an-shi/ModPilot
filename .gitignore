@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyd
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+develop-eggs/
+downloads/
+sdist/
+wheels/
+pip-wheel-metadata/
+.installed.cfg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------------------------------------------------------------------------
+# Test, lint and coverage output
+# ---------------------------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+test-results/
+junit*.xml
+
+# ---------------------------------------------------------------------------
+# Packaging / build output
+# ---------------------------------------------------------------------------
+*.spec.bak
+installer/Output/
+resources/modpilot.png
+
+# ---------------------------------------------------------------------------
+# Local ModPilot runtime data (never commit user data)
+# ---------------------------------------------------------------------------
+.modpilot-data/
+modpilot-data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+*.log
+
+# Download/backups/translation staging produced at runtime
+/downloads/
+/backups/
+/cache/
+/staging/
+/exports/
+/logs/
+*.part
+*.tmp
+
+# Generated credential fallback (DPAPI encrypted, still never commit)
+credentials.dat
+credentials.json
+
+# ---------------------------------------------------------------------------
+# Secrets and local environment overrides
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.secret
+secrets.json
+
+# ---------------------------------------------------------------------------
+# Temporary files and editor/OS metadata
+# ---------------------------------------------------------------------------
+*.bak
+*.orig
+*.rej
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+.idea/
+.vscode/
+.opencode/
+.history/
