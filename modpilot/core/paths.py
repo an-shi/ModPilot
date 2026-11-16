@@ -8,6 +8,7 @@ import unicodedata
 from pathlib import Path
 
 from .errors import ValidationError
+from ..i18n import tr
 
 _WINDOWS_RESERVED = {
     "CON",
@@ -28,10 +29,10 @@ def is_within(path: Path, root: Path) -> bool:
         return False
 
 
-def assert_within(path: Path, root: Path, *, label: str = "路径") -> Path:
+def assert_within(path: Path, root: Path, *, label: str = tr('core.paths.path')) -> Path:
     resolved = path.expanduser().resolve()
     if not is_within(resolved, root):
-        raise ValidationError(f"{label}超出允许目录：{resolved}")
+        raise ValidationError(tr('core.paths.0_is_outside_the_allowed_directory_1', label, resolved))
     return resolved
 
 
@@ -40,9 +41,9 @@ def safe_child(root: Path, relative: str | Path) -> Path:
 
     relative_path = Path(relative)
     if relative_path.is_absolute() or relative_path.drive:
-        raise ValidationError(f"不允许使用绝对路径：{relative}")
+        raise ValidationError(tr('core.paths.absolute_paths_are_not_allowed_0', relative))
     candidate = (root / relative_path).resolve()
-    assert_within(candidate, root, label="目标")
+    assert_within(candidate, root, label=tr('core.paths.target'))
     return candidate
 
 
@@ -72,7 +73,7 @@ def unique_path(path: Path) -> Path:
         candidate = path.with_name(f"{path.stem} ({index}){path.suffix}")
         if not exists(candidate):
             return candidate
-    raise ValidationError(f"无法生成唯一路径：{path}")
+    raise ValidationError(tr('core.paths.failed_to_generate_a_unique_path_0', path))
 
 
 def unique_directory(parent: Path, name: str) -> Path:
@@ -83,7 +84,7 @@ def unique_directory(parent: Path, name: str) -> Path:
         candidate = parent / f"{sanitize_filename(name)} ({index})"
         if not candidate.exists():
             return candidate
-    raise ValidationError(f"无法生成唯一目录：{parent / name}")
+    raise ValidationError(tr('core.paths.failed_to_generate_a_unique_directory_0', parent / name))
 
 
 def human_size(num_bytes: float | None) -> str:

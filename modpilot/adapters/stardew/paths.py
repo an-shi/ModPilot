@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def candidate_installations() -> list[tuple[Path, str]]:
         (Path("C:/GOG Games/Stardew Valley"), "GOG"),
         (Path("D:/SteamLibrary/steamapps/common/Stardew Valley"), "Steam"),
         (Path("E:/SteamLibrary/steamapps/common/Stardew Valley"), "Steam"),
-        (Path("D:/Games/Stardew Valley"), "手动安装"),
+        (Path("D:/Games/Stardew Valley"), tr('adapters.stardew.paths.manual_install')),
     ]
     candidates.extend(env_paths)
 

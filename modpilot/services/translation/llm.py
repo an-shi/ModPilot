@@ -11,6 +11,7 @@ from ...config import ConfigStore
 from ...core.credentials import LLM_SECRET, CredentialStore
 from ...core.errors import LlmError
 from ...version import USER_AGENT
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -30,10 +31,10 @@ class LlmClient:
     def _settings(self):  # type: ignore[no-untyped-def]
         settings = self.config.config.llm
         if not settings.model.strip():
-            raise LlmError("尚未配置 AI 模型名称。请在设置中填写模型。")
+            raise LlmError(tr('services.translation.llm.ai_model_name_is_not_configured_please_specify_a_mod_2976ed'))
         api_key = self.credentials.get(LLM_SECRET) if settings.requires_api_key else None
         if settings.requires_api_key and not api_key:
-            raise LlmError("尚未配置 AI API Key。请在设置中填写。")
+            raise LlmError(tr('services.translation.llm.ai_api_key_is_not_configured_please_enter_it_in_sett_eb8390'))
         return settings, api_key
 
     def is_configured(self) -> bool:
@@ -91,16 +92,16 @@ class LlmClient:
             ) as client:
                 response = client.post(url, headers=self._headers(api_key), json=body)
         except httpx.TimeoutException as exc:
-            raise LlmError("AI 请求超时，请检查 API 地址、网络或模型服务状态。") from exc
+            raise LlmError(tr('services.translation.llm.ai_request_timed_out_check_the_api_address_network_o_be0b8c')) from exc
         except httpx.HTTPError as exc:
-            raise LlmError(f"无法连接 AI API：{exc}") from exc
+            raise LlmError(tr('services.translation.llm.failed_to_connect_to_ai_api_0', exc)) from exc
 
         if response.status_code == 401 or response.status_code == 403:
-            raise LlmError("AI API 认证失败，请检查 API Key。")
+            raise LlmError(tr('services.translation.llm.ai_api_authentication_failed_check_your_api_key'))
         if response.status_code == 404:
-            raise LlmError("AI API 地址或模型不存在（HTTP 404），请检查 Base URL 与模型名称。")
+            raise LlmError(tr('services.translation.llm.ai_api_address_or_model_not_found_http_404_check_the_bf7242'))
         if response.status_code == 429:
-            raise LlmError("AI API 触发速率限制，请稍后重试。")
+            raise LlmError(tr('services.translation.llm.ai_api_rate_limit_reached_please_try_again_later'))
         if response.status_code >= 400:
             detail = response.text.strip()[:800]
             try:
@@ -112,15 +113,15 @@ class LlmClient:
                 )
             except Exception:
                 pass
-            raise LlmError(f"AI API 返回错误（HTTP {response.status_code}）：{detail}")
+            raise LlmError(tr('services.translation.llm.ai_api_returned_an_error_http_0_1', response.status_code, detail))
 
         try:
             payload = response.json()
             content = payload["choices"][0]["message"]["content"]
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise LlmError("AI API 返回格式异常，无法读取回答。") from exc
+            raise LlmError(tr('services.translation.llm.ai_api_returned_an_unexpected_format_unable_to_read_646465')) from exc
         if content is None:
-            raise LlmError("AI 返回了空内容。")
+            raise LlmError(tr('services.translation.llm.ai_returned_empty_content'))
         if isinstance(content, list):
             # Some OpenAI-compatible servers return content parts.
             content = "".join(
@@ -139,7 +140,7 @@ class LlmClient:
             max_tokens=16,
             json_mode=False,
         )
-        return f"连接成功，模型 {settings.model} 已响应：{reply.strip()[:60]}"
+        return tr('services.translation.llm.connection_successful_model_0_responded_1', settings.model, reply.strip()[:60])
 
     @staticmethod
     def parse_json_object(content: str) -> dict[str, Any]:
@@ -160,8 +161,8 @@ class LlmClient:
                 if isinstance(data, dict):
                     return data
             except json.JSONDecodeError as exc:
-                raise LlmError(f"AI 返回的 JSON 无法解析：{exc}") from exc
-        raise LlmError("AI 未返回有效的 JSON 对象。")
+                raise LlmError(tr('services.translation.llm.unable_to_parse_the_json_returned_by_ai_0', exc)) from exc
+        raise LlmError(tr('services.translation.llm.ai_did_not_return_a_valid_json_object'))
 
     def chat_json(self, messages: list[dict[str, str]], *, max_tokens: int | None = None) -> dict[str, Any]:
         content = self.chat(messages, max_tokens=max_tokens)

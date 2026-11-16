@@ -14,6 +14,7 @@ from ...domain.models import (
     ModView,
     ParsedLog,
 )
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -60,17 +61,14 @@ class StaticRules:
                 if dependency.installed_version is None:
                     findings.append(
                         DiagnosticFinding(
-                            title=f"缺少必需依赖：{dependency.unique_id}",
-                            description=(
-                                f"{view.name} 声明了必需依赖 {label}，但当前 Mods 目录中没有找到该依赖。"
-                                "这通常会导致 Mod 在 SMAPI 加载阶段被跳过。"
-                            ),
+                            title=tr('services.diagnostics.rules.missing_required_dependency_0', dependency.unique_id),
+                            description=tr('services.diagnostics.rules.0_declares_required_dependency_1_but_it_was_not_foun_481781', view.name, label),
                             severity=LogSeverity.ERROR,
                             certainty=Certainty.CONFIRMED,
                             category=IssueCategory.MISSING_DEPENDENCY,
                             mods=[view.name, dependency.unique_id],
-                            evidence=[f"{view.name} manifest 依赖：{label}"],
-                            recommendation=f"安装并启用 {dependency.unique_id}，然后重新扫描。",
+                            evidence=[tr('services.diagnostics.rules.0_manifest_dependencies_1', view.name, label)],
+                            recommendation=tr('services.diagnostics.rules.install_and_enable_0_then_rescan', dependency.unique_id),
                             confidence=0.98,
                             source=DiagnosticSource.RULE,
                             rule_id="dependency.missing",
@@ -79,16 +77,14 @@ class StaticRules:
                 elif not dependency.enabled:
                     findings.append(
                         DiagnosticFinding(
-                            title=f"必需依赖未启用：{dependency.unique_id}",
-                            description=(
-                                f"{view.name} 依赖 {dependency.unique_id}，该依赖已安装但处于禁用状态。"
-                            ),
+                            title=tr('services.diagnostics.rules.required_dependency_not_enabled_0', dependency.unique_id),
+                            description=tr('services.diagnostics.rules.0_depends_on_1_which_is_installed_but_disabled', view.name, dependency.unique_id),
                             severity=LogSeverity.ERROR,
                             certainty=Certainty.CONFIRMED,
                             category=IssueCategory.MISSING_DEPENDENCY,
                             mods=[view.name, dependency.unique_id],
-                            evidence=[f"{view.name} manifest 依赖：{label}", "依赖已安装但已禁用"],
-                            recommendation=f"启用 {dependency.unique_id}。",
+                            evidence=[tr('services.diagnostics.rules.0_manifest_dependencies_1', view.name, label), tr('services.diagnostics.rules.dependency_installed_but_disabled')],
+                            recommendation=tr('services.diagnostics.rules.enable_0', dependency.unique_id),
                             confidence=0.98,
                             source=DiagnosticSource.RULE,
                             rule_id="dependency.disabled",
@@ -97,20 +93,17 @@ class StaticRules:
                 elif not dependency.satisfied:
                     findings.append(
                         DiagnosticFinding(
-                            title=f"依赖版本不满足：{dependency.unique_id}",
-                            description=(
-                                f"{view.name} 需要 {label}，当前安装版本为 "
-                                f"{dependency.installed_version}。"
-                            ),
+                            title=tr('services.diagnostics.rules.dependency_version_does_not_meet_requirements_0', dependency.unique_id),
+                            description=tr('services.diagnostics.rules.0_requires_1_but_the_installed_version_is_2', view.name, label, dependency.installed_version),
                             severity=LogSeverity.ERROR,
                             certainty=Certainty.CONFIRMED,
                             category=IssueCategory.VERSION_MISMATCH,
                             mods=[view.name, dependency.unique_id],
                             evidence=[
-                                f"要求 {label}",
-                                f"已安装 {dependency.installed_version}",
+                                tr('services.diagnostics.rules.requires_0', label),
+                                tr('services.diagnostics.rules.installed_0', dependency.installed_version),
                             ],
-                            recommendation=f"将 {dependency.unique_id} 更新到满足要求的版本。",
+                            recommendation=tr('services.diagnostics.rules.update_0_to_a_version_that_meets_the_requirements', dependency.unique_id),
                             confidence=0.96,
                             source=DiagnosticSource.RULE,
                             rule_id="dependency.version",
@@ -127,20 +120,17 @@ class StaticRules:
         for unique_id, items in groups.items():
             if len(items) < 2:
                 continue
-            paths = [f"{item.relative_path}（{item.version}{'，启用' if item.enabled else '，禁用'}）" for item in items]
+            paths = [f"{item.relative_path}（{item.version}{tr('services.diagnostics.rules.enabled') if item.enabled else tr('services.diagnostics.rules.disabled')}）" for item in items]
             findings.append(
                 DiagnosticFinding(
-                    title=f"重复安装：{items[0].name}",
-                    description=(
-                        f"UniqueID {unique_id} 在 Mods 目录中存在 {len(items)} 个副本。"
-                        "重复安装通常会造成版本混乱，但不是唯一原因，请保留一个副本。"
-                    ),
+                    title=tr('services.diagnostics.rules.duplicate_installation_0', items[0].name),
+                    description=tr('services.diagnostics.rules.uniqueid_0_has_1_copies_in_the_mods_folder_duplicate_30a050', unique_id, len(items)),
                     severity=LogSeverity.ERROR,
                     certainty=Certainty.CONFIRMED,
                     category=IssueCategory.DUPLICATE,
                     mods=[item.name for item in items],
                     evidence=paths,
-                    recommendation="禁用并移除多余的副本，仅保留一个版本。",
+                    recommendation=tr('services.diagnostics.rules.disable_and_remove_extra_copies_keeping_only_one_ver_1600ad'),
                     confidence=0.99,
                     source=DiagnosticSource.RULE,
                     rule_id="duplicate.install",
@@ -176,9 +166,9 @@ class StaticRules:
                         category=IssueCategory.ENVIRONMENT,
                         evidence=[f"{check.label}: {check.detail}"],
                         recommendation=(
-                            "安装或修复 SMAPI。"
+                            tr('services.diagnostics.rules.install_or_repair_smapi')
                             if check.key == "smapi"
-                            else "检查游戏安装目录与运行环境。"
+                            else tr('services.diagnostics.rules.check_the_game_installation_directory_and_runtime_en_4423f0')
                         ),
                         confidence=0.95,
                         source=DiagnosticSource.RULE,
@@ -195,19 +185,17 @@ class StaticRules:
             if not version_satisfies(framework_version, minimum):
                 findings.append(
                     DiagnosticFinding(
-                        title=f"SMAPI 版本过低：{mod.name}",
-                        description=(
-                            f"{mod.name} 要求 SMAPI ≥ {minimum}，当前 SMAPI 版本为 {framework_version}。"
-                        ),
+                        title=tr('services.diagnostics.rules.smapi_version_is_too_old_0', mod.name),
+                        description=tr('services.diagnostics.rules.0_requires_smapi_1_but_the_current_smapi_version_is_aca0a3', mod.name, minimum, framework_version),
                         severity=LogSeverity.ERROR,
                         certainty=Certainty.CONFIRMED,
                         category=IssueCategory.VERSION_MISMATCH,
                         mods=[mod.name],
                         evidence=[
                             f"manifest MinimumApiVersion: {minimum}",
-                            f"当前 SMAPI: {framework_version}",
+                            tr('services.diagnostics.rules.current_smapi_0', framework_version),
                         ],
-                        recommendation="更新 SMAPI 到 Mod 要求的版本或更高。",
+                        recommendation=tr('services.diagnostics.rules.update_smapi_to_the_version_required_by_the_mod_or_n_afe6b4'),
                         confidence=0.97,
                         source=DiagnosticSource.RULE,
                         rule_id="framework.minimum_api",
@@ -242,7 +230,7 @@ class StaticRules:
             source_url = str(rule.get("source") or "")
             findings.append(
                 DiagnosticFinding(
-                    title=str(rule.get("title") or "已知兼容性问题"),
+                    title=str(rule.get("title") or tr('services.diagnostics.rules.known_compatibility_issues')),
                     description=str(rule.get("description") or ""),
                     severity=_severity_rank(str(rule.get("severity") or "warning")),
                     certainty=Certainty.KNOWN,
@@ -253,8 +241,8 @@ class StaticRules:
                     ),
                     mods=[by_id[uid].name for uid in required_ids],
                     evidence=[
-                        "已安装：" + "、".join(f"{by_id[uid].name} {by_id[uid].version}" for uid in required_ids),
-                        f"规则来源：{source_url}" if source_url else "规则来源未提供",
+                        tr('services.diagnostics.rules.installed') + "、".join(f"{by_id[uid].name} {by_id[uid].version}" for uid in required_ids),
+                        tr('services.diagnostics.rules.rule_source_0', source_url) if source_url else tr('services.diagnostics.rules.rule_source_not_provided'),
                     ],
                     recommendation=str(rule.get("recommendation") or ""),
                     confidence=0.9,
@@ -270,7 +258,7 @@ class StaticRules:
             category = IssueCategory.LOG_ERROR
             reason = str(entry.get("reason") or "")
             lower = reason.lower()
-            mods = [str(entry.get("name") or "未知 Mod")]
+            mods = [str(entry.get("name") or tr('services.diagnostics.rules.unknown_mod'))]
             mods.extend(str(dep) for dep in entry.get("missing_dependencies", []) if dep)
             if (
                 entry.get("missing_dependencies")
@@ -291,41 +279,38 @@ class StaticRules:
                 category = IssueCategory.DUPLICATE
             findings.append(
                 DiagnosticFinding(
-                    title=f"Mod 无法加载：{mods[0]}",
+                    title=tr('services.diagnostics.rules.mod_failed_to_load_0', mods[0]),
                     description=reason,
                     severity=LogSeverity.ERROR,
                     certainty=Certainty.CONFIRMED,
                     category=category,
                     mods=mods,
                     evidence=[str(entry.get("raw") or reason)[:1200]],
-                    recommendation=str(entry.get("recommendation") or "根据日志原因修复后重启游戏。"),
+                    recommendation=str(entry.get("recommendation") or tr('services.diagnostics.rules.fix_the_issue_based_on_the_log_cause_then_restart_th_9c25af')),
                     confidence=0.95,
                     source=DiagnosticSource.LOG,
                     rule_id="log.skipped",
                 )
             )
         for issue in parsed.issues:
-            if any(issue.message.startswith(f"{entry.get('name')} 无法加载") for entry in parsed.skipped_mods):
+            if any(issue.message.startswith(tr('services.diagnostics.rules.0_could_not_be_loaded', entry.get('name'))) for entry in parsed.skipped_mods):
                 continue
             # A single stack trace is evidence of an error, not proof of a
             # conflict between every mod mentioned in the same line.
             certainty = Certainty.SUSPECTED if len(issue.mods) <= 1 else Certainty.UNKNOWN
             findings.append(
                 DiagnosticFinding(
-                    title=f"日志错误：{issue.mods[0] if issue.mods else 'SMAPI'}",
+                    title=tr('services.diagnostics.rules.log_error_0', issue.mods[0] if issue.mods else 'SMAPI'),
                     description=issue.message,
                     severity=issue.severity,
                     certainty=certainty,
                     category=issue.category,
                     mods=issue.mods,
                     evidence=[
-                        (f"日志第 {issue.line_number} 行：" if issue.line_number else "")
+                        (tr('services.diagnostics.rules.log_line_0', issue.line_number) if issue.line_number else "")
                         + (issue.raw[:1600] or issue.message)
                     ],
-                    recommendation=(
-                        "查看完整堆栈，优先禁用最近安装/更新的 Mod 做对照测试。"
-                        "单条日志中同时出现多个 Mod 并不等于它们存在冲突。"
-                    ),
+                    recommendation=tr('services.diagnostics.rules.review_the_full_stack_trace_and_first_try_disabling_60c944'),
                     confidence=issue.confidence,
                     source=DiagnosticSource.LOG,
                     rule_id="log.error",

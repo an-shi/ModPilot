@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from ..i18n import tr
 
 # Tokens commonly used by game text/translation frameworks. They must survive
 # translation byte-for-byte. Keeping this list game-agnostic is safe: adapters
@@ -88,28 +89,28 @@ def token_multiset(text: str) -> dict[str, int]:
 def validate_placeholders(source: str, translation: str) -> list[str]:
     errors: list[str] = []
     if not translation.strip():
-        return ["译文为空"]
+        return [tr('core.text_tokens.translation_is_empty')]
     source_tokens = token_multiset(source)
     translated_tokens = token_multiset(translation)
     if source_tokens != translated_tokens:
         missing = [
-            f"{token}（{count} 次）"
+            tr('core.text_tokens.0_1_times', token, count)
             for token, count in source_tokens.items()
             if translated_tokens.get(token, 0) < count
         ]
         added = [
-            f"{token}（{count} 次）"
+            tr('core.text_tokens.0_1_times', token, count)
             for token, count in translated_tokens.items()
             if source_tokens.get(token, 0) < count
         ]
         if missing:
-            errors.append("占位符缺失：" + "、".join(missing))
+            errors.append(tr('core.text_tokens.missing_placeholders') + "、".join(missing))
         if added:
-            errors.append("占位符被新增或重复：" + "、".join(added))
+            errors.append(tr('core.text_tokens.placeholders_added_or_duplicated') + "、".join(added))
     if "\x00" in translation:
-        errors.append("译文包含空字符")
+        errors.append(tr('core.text_tokens.translation_contains_null_characters'))
     if len(translation) > max(4000, len(source) * 20):
-        errors.append("译文长度异常，可能不是有效翻译")
+        errors.append(tr('core.text_tokens.translation_length_is_unusual_and_may_not_be_a_valid_05d928'))
     return errors
 
 

@@ -9,6 +9,7 @@ from ..domain.models import DashboardSummary
 from .activity import ActivityService
 from .game_service import GameService
 from .mod_service import ModService
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class DashboardService:
         try:
             environment = self.games.environment(game.id)
         except Exception as exc:
-            log.warning("读取游戏环境失败：%s", exc)
+            log.warning(tr('services.dashboard_service.failed_to_read_game_environment_s'), exc)
         game = game.model_copy(update={"translation_pending": translation_pending})
         return DashboardSummary(
             game=game,

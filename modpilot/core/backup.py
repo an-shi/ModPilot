@@ -14,6 +14,7 @@ from typing import Any
 
 from .errors import BackupError
 from .paths import assert_within, is_within, sanitize_filename
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -58,21 +59,21 @@ class BackupManager:
     ) -> BackupInfo:
         root = root.resolve()
         if not root.exists():
-            raise BackupError(f"备份源目录不存在：{root}")
+            raise BackupError(tr('core.backup.the_backup_source_directory_does_not_exist_0', root))
         normalized_items: list[Path] = []
         for item in items:
             resolved = item.resolve()
             try:
                 relative = resolved.relative_to(root)
             except ValueError as exc:
-                raise BackupError(f"备份项不在源目录中：{resolved}") from exc
+                raise BackupError(tr('core.backup.backup_item_is_not_in_the_source_directory_0', resolved)) from exc
             if not relative.parts or relative.name in ("", "."):
-                raise BackupError("不能直接备份整个根目录，请指定具体内容。")
+                raise BackupError(tr('core.backup.the_entire_root_folder_cannot_be_backed_up_directly_db44f9'))
             if not resolved.exists():
-                raise BackupError(f"备份项不存在：{resolved}")
+                raise BackupError(tr('core.backup.backup_item_does_not_exist_0', resolved))
             normalized_items.append(relative)
         if not normalized_items:
-            raise BackupError("没有可备份的内容。")
+            raise BackupError(tr('core.backup.there_is_nothing_to_back_up'))
 
         destination = (destination_dir or self.backups_dir).resolve()
         destination.mkdir(parents=True, exist_ok=True)
@@ -115,17 +116,17 @@ class BackupManager:
             archive_path.unlink(missing_ok=True)
             if isinstance(exc, BackupError):
                 raise
-            raise BackupError(f"创建备份失败：{exc}") from exc
+            raise BackupError(tr('core.backup.failed_to_create_backup_0', exc)) from exc
 
         size = archive_path.stat().st_size
         sha = self._sha256(archive_path)
-        log.info("已创建备份：%s（%d bytes）", archive_path, size)
+        log.info(tr('core.backup.created_backup_s_d_bytes'), archive_path, size)
         return BackupInfo(path=archive_path, manifest=manifest, size_bytes=size, sha256=sha)
 
     def _add_path(self, archive: zipfile.ZipFile, root: Path, relative: Path) -> None:
         source = root / relative
         if source.is_symlink():
-            log.warning("备份跳过符号链接：%s", source)
+            log.warning(tr('core.backup.skipping_symbolic_link_during_backup_s'), source)
             return
         if source.is_file():
             archive.write(source, relative.as_posix())
@@ -136,7 +137,7 @@ class BackupManager:
                 archive.writestr(f"{relative.as_posix().rstrip('/')}/", b"")
             for child in children:
                 if child.is_symlink():
-                    log.warning("备份跳过符号链接：%s", child)
+                    log.warning(tr('core.backup.skipping_symbolic_link_during_backup_s'), child)
                     continue
                 child_rel = child.relative_to(root).as_posix()
                 if child.is_dir():
@@ -146,7 +147,7 @@ class BackupManager:
                 elif child.is_file():
                     archive.write(child, child_rel)
             return
-        raise BackupError(f"不支持的备份项：{source}")
+        raise BackupError(tr('core.backup.unsupported_backup_item_0', source))
 
     def file_sha256(self, path: Path) -> str:
         return self._sha256(Path(path))
@@ -165,14 +166,14 @@ class BackupManager:
                 raw = archive.read(MANIFEST_NAME)
                 manifest = json.loads(raw.decode("utf-8"))
         except (KeyError, zipfile.BadZipFile, json.JSONDecodeError, OSError) as exc:
-            raise BackupError(f"无效的 ModPilot 备份文件：{exc}") from exc
+            raise BackupError(tr('core.backup.invalid_modpilot_backup_file_0', exc)) from exc
         if manifest.get("manifest_version") != MANIFEST_VERSION:
-            raise BackupError("备份格式版本不受支持。")
+            raise BackupError(tr('core.backup.this_backup_format_version_is_not_supported'))
         if not isinstance(manifest.get("items"), list) or not manifest["items"]:
-            raise BackupError("备份清单缺少内容。")
+            raise BackupError(tr('core.backup.the_backup_manifest_is_missing_its_contents'))
         for item in manifest["items"]:
             if not isinstance(item, str) or Path(item).is_absolute() or ".." in Path(item).parts:
-                raise BackupError("备份清单包含不安全路径。")
+                raise BackupError(tr('core.backup.the_backup_manifest_contains_an_unsafe_path'))
         return manifest
 
     def inspect(self, archive_path: Path) -> BackupInfo:
@@ -201,10 +202,10 @@ class BackupManager:
                         continue
                     relative = Path(info.filename.replace("\\", "/"))
                     if relative.is_absolute() or ".." in relative.parts:
-                        raise BackupError(f"备份包含不安全路径：{info.filename}")
+                        raise BackupError(tr('core.backup.the_backup_contains_an_unsafe_path_0', info.filename))
                     destination = (staging / relative).resolve()
                     if not is_within(destination, staging):
-                        raise BackupError(f"备份路径越界：{info.filename}")
+                        raise BackupError(tr('core.backup.backup_path_escapes_the_target_directory_0', info.filename))
                     if info.is_dir():
                         destination.mkdir(parents=True, exist_ok=True)
                         continue
@@ -215,9 +216,9 @@ class BackupManager:
             for item in manifest["items"]:
                 relative = Path(item)
                 target = (target_root / relative).resolve()
-                assert_within(target, target_root, label="恢复目标")
+                assert_within(target, target_root, label=tr('core.backup.restore_target'))
                 staged = (staging / relative).resolve()
-                assert_within(staged, staging, label="备份内容")
+                assert_within(staged, staging, label=tr('core.backup.backup_contents'))
                 if not staged.exists() and not target.exists():
                     continue
 
@@ -234,10 +235,10 @@ class BackupManager:
 
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(rollback, ignore_errors=True)
-            log.info("已恢复备份：%s -> %s", archive_path, target_root)
+            log.info(tr('core.backup.restored_backup_s_s'), archive_path, target_root)
             return manifest
         except Exception as exc:
-            log.exception("恢复失败，正在回滚：%s", archive_path)
+            log.exception(tr('core.backup.restore_failed_rolling_back_s'), archive_path)
             for target, old_location in reversed(processed):
                 try:
                     if target.exists() or target.is_symlink():
@@ -249,16 +250,16 @@ class BackupManager:
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.move(str(old_location), str(target))
                 except OSError:
-                    log.exception("回滚备份项失败：%s", target)
+                    log.exception(tr('core.backup.failed_to_roll_back_backup_item_s'), target)
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(rollback, ignore_errors=True)
             if isinstance(exc, BackupError):
                 raise
-            raise BackupError(f"恢复备份失败：{exc}") from exc
+            raise BackupError(tr('core.backup.failed_to_restore_backup_0', exc)) from exc
 
     def delete(self, archive_path: Path) -> None:
         path = Path(archive_path)
         if is_within(path, self.backups_dir):
             path.unlink(missing_ok=True)
         else:
-            raise BackupError("拒绝删除备份目录之外的文件。")
+            raise BackupError(tr('core.backup.refusing_to_delete_files_outside_the_backup_director_8a3f22'))

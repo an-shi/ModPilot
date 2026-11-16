@@ -30,6 +30,7 @@ from ..domain.models import DownloadView
 from ..version import USER_AGENT
 from .activity import ActivityService
 from .nexus.client import NexusClient
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class DownloadManager:
         with self.db.session() as session:
             count = DownloadRepository(session).mark_interrupted()
         if count:
-            log.info("已将 %d 个中断的下载标记为暂停。", count)
+            log.info(tr('services.download_manager.marked_d_interrupted_downloads_as_paused'), count)
         return count
 
     def _emit(self, row: Download) -> None:
@@ -112,7 +113,7 @@ class DownloadManager:
         try:
             self.on_event(event)
         except Exception:
-            log.exception("下载事件回调失败")
+            log.exception(tr('services.download_manager.download_event_callback_failed'))
 
     def enqueue(
         self,
@@ -127,14 +128,14 @@ class DownloadManager:
         target_mod_id: int | None = None,
     ) -> DownloadView:
         if not self.nexus.is_configured():
-            raise NexusAuthError("尚未配置 Nexus API Key。")
+            raise NexusAuthError(tr('services.download_manager.nexus_api_key_is_not_configured'))
         safe_name = sanitize_filename(file_name or f"{mod_name}-{file_id}.zip", fallback=f"mod-{file_id}.zip")
         if "." not in safe_name:
             safe_name += ".zip"
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise DownloadError("游戏未添加。")
+                raise DownloadError(tr('services.download_manager.no_game_has_been_added'))
             row = DownloadRepository(session).add(
                 game_id=game_id,
                 nexus_mod_id=nexus_mod_id,
@@ -154,7 +155,7 @@ class DownloadManager:
         with self.db.session() as session:
             row = DownloadRepository(session).get(download_id)
             if row is None:
-                raise DownloadError("下载任务不存在。")
+                raise DownloadError(tr('services.download_manager.download_task_does_not_exist'))
             return self._to_view(row)
 
     def list_for_game(self, game_id: int) -> list[DownloadView]:
@@ -178,7 +179,7 @@ class DownloadManager:
             repo = DownloadRepository(session)
             row = repo.get(download_id)
             if row is None:
-                raise DownloadError("下载任务不存在。")
+                raise DownloadError(tr('services.download_manager.download_task_does_not_exist'))
             if row.status in (DownloadStatus.QUEUED.value, DownloadStatus.DOWNLOADING.value):
                 repo.update(row, status=DownloadStatus.PAUSED.value)
                 self._emit(row)
@@ -188,7 +189,7 @@ class DownloadManager:
             repo = DownloadRepository(session)
             row = repo.get(download_id)
             if row is None:
-                raise DownloadError("下载任务不存在。")
+                raise DownloadError(tr('services.download_manager.download_task_does_not_exist'))
             if row.status not in (DownloadStatus.PAUSED.value, DownloadStatus.FAILED.value, DownloadStatus.CANCELLED.value):
                 return
             repo.update(
@@ -221,7 +222,7 @@ class DownloadManager:
             repo = DownloadRepository(session)
             row = repo.get(download_id)
             if row is None:
-                raise DownloadError("下载任务不存在。")
+                raise DownloadError(tr('services.download_manager.download_task_does_not_exist'))
             if row.status not in (
                 DownloadStatus.COMPLETED.value,
                 DownloadStatus.CANCELLED.value,
@@ -229,7 +230,7 @@ class DownloadManager:
                 repo.update(
                     row,
                     status=DownloadStatus.CANCELLED.value,
-                    error="用户已取消下载。",
+                    error=tr('services.download_manager.download_canceled_by_the_user'),
                 )
                 self._emit(row)
             _final, part = self._paths_for(row)
@@ -244,7 +245,7 @@ class DownloadManager:
             repo = DownloadRepository(session)
             row = repo.get(download_id)
             if row is None:
-                raise DownloadError("下载任务不存在。")
+                raise DownloadError(tr('services.download_manager.download_task_does_not_exist'))
             repo.update(
                 row,
                 status=DownloadStatus.QUEUED.value,
@@ -284,7 +285,7 @@ class DownloadManager:
                     continue
                 self._run(download_id, job)
             except Exception:
-                log.exception("下载工作线程异常")
+                log.exception(tr('services.download_manager.download_worker_thread_error'))
             finally:
                 self._queue.task_done()
 
@@ -340,7 +341,7 @@ class DownloadManager:
             while job.pause.is_set() and not job.cancel.is_set():
                 time.sleep(0.15)
             if job.cancel.is_set():
-                raise DownloadCancelled("用户已取消下载。")
+                raise DownloadCancelled(tr('services.download_manager.download_canceled_by_the_user'))
             row = self._update_db(
                 download_id,
                 status=DownloadStatus.DOWNLOADING.value,
@@ -351,14 +352,14 @@ class DownloadManager:
             last_error: Exception | None = None
             for attempt in range(3):
                 if job.cancel.is_set():
-                    raise DownloadCancelled("用户已取消下载。")
+                    raise DownloadCancelled(tr('services.download_manager.download_canceled_by_the_user'))
                 if attempt:
                     row = self._update_db(download_id, retries=attempt)
                     if row:
                         self._emit(row)
                     for _ in range(20):
                         if job.cancel.is_set():
-                            raise DownloadCancelled("用户已取消下载。")
+                            raise DownloadCancelled(tr('services.download_manager.download_canceled_by_the_user'))
                         time.sleep(0.2)
                 try:
                     self._download(download_id, job)
@@ -367,7 +368,7 @@ class DownloadManager:
                     raise
                 except Exception as exc:
                     last_error = exc
-                    log.warning("下载 %s 失败（第 %d 次）：%s", download_id, attempt + 1, exc)
+                    log.warning(tr('services.download_manager.failed_to_download_s_attempt_d_s'), download_id, attempt + 1, exc)
                     if attempt < 2:
                         continue
                     raise
@@ -378,19 +379,19 @@ class DownloadManager:
                 row = self._update_db(
                     download_id,
                     status=DownloadStatus.PAUSED.value,
-                    error="应用已关闭，下载已暂停。",
+                    error=tr('services.download_manager.the_app_was_closed_so_downloads_have_been_paused'),
                 )
             else:
                 row = self._update_db(
                     download_id,
                     status=DownloadStatus.CANCELLED.value,
-                    error="用户已取消下载。",
+                    error=tr('services.download_manager.download_canceled_by_the_user'),
                 )
             if row:
                 self._emit(row)
         except Exception as exc:
             message = str(exc) or exc.__class__.__name__
-            log.error("下载任务 %s 失败：%s", download_id, message)
+            log.error(tr('services.download_manager.download_task_s_failed_s'), download_id, message)
             row = self._update_db(
                 download_id,
                 status=DownloadStatus.PAUSED.value if self._shutdown else DownloadStatus.FAILED.value,
@@ -400,7 +401,7 @@ class DownloadManager:
                 self._emit(row)
                 if not self._shutdown:
                     self.activity.record(
-                        f"下载失败：{row.mod_name}",
+                        tr('services.download_manager.download_failed_0', row.mod_name),
                         kind="download",
                         level="error",
                         game_id=row.game_id,
@@ -413,7 +414,7 @@ class DownloadManager:
                 row = DownloadRepository(session).get(download_id)
                 if row and row.status == DownloadStatus.COMPLETED.value:
                     self.activity.record(
-                        f"下载完成：{row.mod_name}（{row.file_name}）",
+                        tr('services.download_manager.download_complete_0_1', row.mod_name, row.file_name),
                         kind="download",
                         game_id=row.game_id,
                         details={"download_id": download_id, "archive": row.archive_path},
@@ -424,19 +425,19 @@ class DownloadManager:
             repo = DownloadRepository(session)
             row = repo.get(download_id)
             if row is None:
-                raise DownloadError("下载任务不存在。")
+                raise DownloadError(tr('services.download_manager.download_task_does_not_exist'))
             game = GameRepository(session).get(row.game_id)
             if game is None:
-                raise DownloadError("游戏未添加。")
+                raise DownloadError(tr('services.download_manager.no_game_has_been_added'))
             nexus_mod_id = row.nexus_mod_id
             file_id = row.file_id
             expected_md5 = row.expected_md5
             domain = game.nexus_domain
             final_path, part_path = self._paths_for(row)
         if not nexus_mod_id or not file_id:
-            raise DownloadError("下载任务缺少 Nexus Mod/文件 ID。")
+            raise DownloadError(tr('services.download_manager.download_task_is_missing_the_nexus_mod_file_id'))
         if not domain:
-            raise DownloadError("游戏没有配置 Nexus 游戏标识。")
+            raise DownloadError(tr('services.download_manager.the_game_does_not_have_a_nexus_game_id_configured'))
         final_path.parent.mkdir(parents=True, exist_ok=True)
         links = self.nexus.get_download_links(domain, nexus_mod_id, file_id)
         url = links[0]
@@ -458,12 +459,12 @@ class DownloadManager:
                 with client.stream("GET", url, headers=headers) as response:
                     if response.status_code == 401 or response.status_code == 403:
                         raise NexusPremiumRequired(
-                            "Nexus 拒绝下载，请确认账号权限或改用网页手动下载。"
+                            tr('services.download_manager.nexus_refused_the_download_check_your_account_permis_768b83')
                         )
                     if response.status_code == 404:
-                        raise DownloadError("下载链接已失效，请重试。")
+                        raise DownloadError(tr('services.download_manager.the_download_link_has_expired_please_try_again'))
                     if response.status_code not in (200, 206):
-                        raise DownloadError(f"下载失败：HTTP {response.status_code}")
+                        raise DownloadError(tr('services.download_manager.download_failed_http_0', response.status_code))
                     if response.status_code == 200 and offset:
                         # Server ignored Range: restart from zero.
                         offset = 0
@@ -492,7 +493,7 @@ class DownloadManager:
                     with part_path.open(mode) as handle:
                         for chunk in response.iter_bytes(CHUNK_SIZE):
                             if job.cancel.is_set():
-                                raise DownloadCancelled("用户已取消下载。")
+                                raise DownloadCancelled(tr('services.download_manager.download_canceled_by_the_user'))
                             if job.pause.is_set():
                                 handle.flush()
                                 row = self._update_db(
@@ -507,7 +508,7 @@ class DownloadManager:
                                 while job.pause.is_set() and not job.cancel.is_set():
                                     time.sleep(0.2)
                                 if job.cancel.is_set():
-                                    raise DownloadCancelled("用户已取消下载。")
+                                    raise DownloadCancelled(tr('services.download_manager.download_canceled_by_the_user'))
                                 row = self._update_db(
                                     download_id,
                                     status=DownloadStatus.DOWNLOADING.value,
@@ -531,12 +532,12 @@ class DownloadManager:
                                 if row:
                                     self._emit(row)
             except httpx.HTTPError as exc:
-                raise DownloadError(f"下载连接中断：{exc}") from exc
+                raise DownloadError(tr('services.download_manager.download_connection_interrupted_0', exc)) from exc
 
         if total and downloaded < total:
-            raise DownloadError(f"下载未完成（{downloaded}/{total} 字节），可继续重试。")
+            raise DownloadError(tr('services.download_manager.download_incomplete_0_1_bytes_retry_to_resume', downloaded, total))
         if not part_path.exists():
-            raise DownloadError("下载文件不存在。")
+            raise DownloadError(tr('services.download_manager.downloaded_file_does_not_exist'))
         if expected_md5:
             digest = hashlib.md5()
             with part_path.open("rb") as handle:
@@ -546,7 +547,7 @@ class DownloadManager:
             if actual.lower() != expected_md5.lower():
                 part_path.unlink(missing_ok=True)
                 raise DownloadError(
-                    f"文件校验失败（MD5 不匹配）。已删除损坏文件，请重试。期望 {expected_md5}，实际 {actual}"
+                    tr('services.download_manager.file_verification_failed_md5_mismatch_the_corrupted_0300a1', expected_md5, actual)
                 )
         os.replace(part_path, final_path)
         row = self._update_db(
@@ -575,7 +576,7 @@ class DownloadManager:
                     repo.update(
                         row,
                         status=DownloadStatus.PAUSED.value,
-                        error="应用已关闭，下载已暂停。",
+                        error=tr('services.download_manager.the_app_was_closed_so_downloads_have_been_paused'),
                     )
         for _worker in self._workers:
             self._queue.put(None)

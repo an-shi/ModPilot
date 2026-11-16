@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ...domain.enums import IssueCategory, LogSeverity
 from ...domain.models import LogIssue, ParsedLog
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -100,20 +101,20 @@ def _categorize_reason(reason: str) -> tuple[IssueCategory, list[str], str]:
     lower = reason.lower()
     missing = _extract_missing_dependencies(reason)
     if "not compatible with your game version" in lower:
-        return IssueCategory.COMPATIBILITY, [], "该 Mod 与当前游戏版本不兼容。"
+        return IssueCategory.COMPATIBILITY, [], tr('adapters.stardew.log_parser.this_mod_is_not_compatible_with_the_current_game_ver_d55a9b')
     if "requires api version" in lower or "requires a newer version of smapi" in lower:
-        return IssueCategory.VERSION_MISMATCH, [], "该 Mod 需要更新版本的 SMAPI。"
+        return IssueCategory.VERSION_MISMATCH, [], tr('adapters.stardew.log_parser.this_mod_requires_a_newer_version_of_smapi')
     if missing:
-        return IssueCategory.MISSING_DEPENDENCY, missing, "该 Mod 缺少必需依赖。"
+        return IssueCategory.MISSING_DEPENDENCY, missing, tr('adapters.stardew.log_parser.this_mod_is_missing_required_dependencies')
     if "duplicate" in lower:
-        return IssueCategory.DUPLICATE, [], "检测到重复安装或重复 UniqueID。"
+        return IssueCategory.DUPLICATE, [], tr('adapters.stardew.log_parser.detected_duplicate_installation_or_duplicate_uniquei_2e831c')
     if "manifest" in lower and ("invalid" in lower or "parsing" in lower or "none of them" in lower):
-        return IssueCategory.CONFIG, [], "Mod 的 manifest.json 无效，需要重新安装。"
+        return IssueCategory.CONFIG, [], tr('adapters.stardew.log_parser.the_mod_s_manifest_json_is_invalid_reinstallation_is_d6a64b')
     if "none of them are manifest.json" in lower or "no manifest.json" in lower or "empty folder" in lower:
-        return IssueCategory.OTHER, [], "Mod 文件夹结构不完整或不是有效的 SMAPI Mod。"
+        return IssueCategory.OTHER, [], tr('adapters.stardew.log_parser.the_mod_folder_structure_is_incomplete_or_not_a_vali_4083f3')
     if "game version" in lower or "minimum api" in lower:
-        return IssueCategory.VERSION_MISMATCH, [], "版本要求不满足。"
-    return IssueCategory.LOG_ERROR, [], "Mod 加载失败，请查看原始日志。"
+        return IssueCategory.VERSION_MISMATCH, [], tr('adapters.stardew.log_parser.version_requirement_not_met')
+    return IssueCategory.LOG_ERROR, [], tr('adapters.stardew.log_parser.mod_failed_to_load_see_the_original_log')
 
 
 def _categorize_error(message: str) -> tuple[IssueCategory, list[str]]:
@@ -144,7 +145,7 @@ class SmapiLogParser:
             return ParsedLog(
                 path=path,
                 log_type=self.log_type,
-                parse_warnings=[f"无法读取日志：{exc}"],
+                parse_warnings=[tr('adapters.stardew.log_parser.failed_to_read_log_0', exc)],
             )
         try:
             if size > MAX_LOG_BYTES:
@@ -159,13 +160,13 @@ class SmapiLogParser:
             return ParsedLog(
                 path=path,
                 log_type=self.log_type,
-                parse_warnings=[f"无法读取日志：{exc}"],
+                parse_warnings=[tr('adapters.stardew.log_parser.failed_to_read_log_0', exc)],
             )
         text = raw_bytes.decode("utf-8", errors="replace")
         lines = text.splitlines()
         parse_warnings: list[str] = []
         if truncated:
-            parse_warnings.append("日志文件过大，仅解析最后 32 MB。")
+            parse_warnings.append(tr('adapters.stardew.log_parser.the_log_file_is_too_large_only_the_last_32_mb_will_b_ff07de'))
 
         result = ParsedLog(
             path=path,
@@ -271,7 +272,7 @@ class SmapiLogParser:
             pending_issue = LogIssue(
                 severity=level,
                 category=category,
-                message=message or f"{source} 产生了一条未说明的错误",
+                message=message or tr('adapters.stardew.log_parser.0_produced_an_unexplained_error', source),
                 raw=line,
                 line_number=line_number,
                 mods=list(dict.fromkeys(mods)),
@@ -281,10 +282,10 @@ class SmapiLogParser:
 
         if loaded_count is not None and len(result.loaded_mods) < loaded_count:
             parse_warnings.append(
-                f"日志声明加载了 {loaded_count} 个 Mod，仅解析到 {len(result.loaded_mods)} 个。"
+                tr('adapters.stardew.log_parser.the_log_claims_0_mods_were_loaded_but_only_1_were_pa_dc8a0d', loaded_count, len(result.loaded_mods))
             )
         if not result.framework_version:
-            parse_warnings.append("未在日志头部识别到 SMAPI 版本。")
+            parse_warnings.append(tr('adapters.stardew.log_parser.could_not_identify_the_smapi_version_in_the_log_head_43c2bf'))
         result.issues.sort(key=lambda item: (-item.severity.rank, item.line_number))
         return result
 
@@ -324,7 +325,7 @@ class SmapiLogParser:
         issue = LogIssue(
             severity=LogSeverity.ERROR,
             category=category,
-            message=f"{name} 无法加载：{reason}",
+            message=tr('adapters.stardew.log_parser.0_could_not_be_loaded_1', name, reason),
             raw=raw_line,
             line_number=line_number,
             mods=[name] if name else [],

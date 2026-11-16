@@ -38,6 +38,7 @@ from .activity import ActivityService
 from .backup_service import BackupService
 from .mod_service import ModService
 from .nexus.client import NexusClient
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -72,10 +73,10 @@ class RepairService:
         with self.db.session() as session:
             run = DiagnosticRepository(session).get_run(run_id)
             if run is None:
-                raise RepairError("诊断记录不存在。")
+                raise RepairError(tr('services.repair_service.diagnostic_record_does_not_exist'))
             game = GameRepository(session).get(run.game_id)
             if game is None:
-                raise RepairError("游戏记录不存在。")
+                raise RepairError(tr('services.repair_service.game_record_does_not_exist'))
             game_id = run.game_id
         views = self.mods.list_mods(game_id)
         known = {view.name.casefold(): view for view in views}
@@ -131,11 +132,8 @@ class RepairService:
                             add_step(
                                 RepairStep(
                                     id=f"disable-{copy.id}",
-                                    title=f"禁用重复副本：{copy.name}",
-                                    description=(
-                                        f"保留 {keep.relative_path}（{keep.version}），禁用 {copy.relative_path}。"
-                                        "仅重命名文件夹，不删除文件。"
-                                    ),
+                                    title=tr('services.repair_service.disable_duplicate_copy_0', copy.name),
+                                    description=tr('services.repair_service.keep_0_1_and_disable_2_only_folders_are_renamed_no_f_d627c8', keep.relative_path, keep.version, copy.relative_path),
                                     risk=RiskLevel.LOW,
                                     automatic=True,
                                     action="disable_mod",
@@ -145,27 +143,27 @@ class RepairService:
                             )
                         else:
                             warnings.append(
-                                f"{copy.name} 的重复副本 {copy.relative_path} 已处于禁用状态，可在 Mod 管理中卸载。"
+                                tr('services.repair_service.0_has_a_duplicate_copy_1_that_is_already_disabled_yo_57dc69', copy.name, copy.relative_path)
                             )
             elif category == IssueCategory.ENVIRONMENT.value:
                 if "SMAPI" in title or "smapi" in (issue.description or "").lower():
                     add_step(
                         RepairStep(
                             id="manual-smapi",
-                            title="安装或更新 SMAPI",
-                            description=issue.recommendation or "请安装 SMAPI 后重新诊断。",
+                            title=tr('services.repair_service.install_or_update_smapi'),
+                            description=issue.recommendation or tr('services.repair_service.install_smapi_then_run_diagnostics_again'),
                             risk=RiskLevel.MEDIUM,
                             automatic=False,
                             action="manual",
                             params={
                                 "url": "https://smapi.io/",
-                                "instructions": "下载 SMAPI 安装器，按安装器提示安装，然后重新扫描。",
+                                "instructions": tr('services.repair_service.download_the_smapi_installer_follow_the_installer_pr_b14321'),
                             },
                             findings=[issue.rule_id or "environment"],
                         )
                     )
-                elif "日志" in title:
-                    warnings.append("未找到 SMAPI 日志，无法针对运行错误生成修复步骤。")
+                elif tr('services.repair_service.logs') in title:
+                    warnings.append(tr('services.repair_service.smapi_log_not_found_cannot_generate_repair_steps_for_4982c9'))
             elif category in (
                 IssueCategory.VERSION_MISMATCH.value,
                 IssueCategory.COMPATIBILITY.value,
@@ -179,10 +177,10 @@ class RepairService:
                     add_step(
                         RepairStep(
                             id=f"manual-version-{view.id}",
-                            title=f"核对版本：{view.name}",
+                            title=tr('services.repair_service.verify_version_0', view.name),
                             description=(
-                                (issue.recommendation or issue.description or "更新到兼容版本。")
-                                + " 版本升级不能仅凭日志自动决定，请确认对应游戏/SMAPI 版本。"
+                                (issue.recommendation or issue.description or tr('services.repair_service.update_to_a_compatible_version'))
+                                + tr('services.repair_service.version_upgrades_cannot_be_decided_from_logs_alone_p_9f36b5')
                             ),
                             risk=RiskLevel.MEDIUM,
                             automatic=False,
@@ -191,7 +189,7 @@ class RepairService:
                                 "url": f"https://www.nexusmods.com/stardewvalley/mods/{view.nexus_mod_id}"
                                 if view.nexus_mod_id
                                 else "",
-                                "instructions": "在更新中心更新该 Mod，或查看 Nexus 页面兼容说明。",
+                                "instructions": tr('services.repair_service.update_this_mod_in_the_update_center_or_check_the_co_28d06b'),
                             },
                             findings=[issue.rule_id or "version"],
                         )
@@ -206,15 +204,12 @@ class RepairService:
                     add_step(
                         RepairStep(
                             id=f"manual-config-{view.id}",
-                            title=f"重新安装或修复配置：{view.name}",
-                            description=(
-                                "检测到 manifest 或配置文件问题。自动修改配置文件风险较高，"
-                                "建议先查看原始日志；必要时卸载并重新安装该 Mod。"
-                            ),
+                            title=tr('services.repair_service.reinstall_or_repair_configuration_0', view.name),
+                            description=tr('services.repair_service.a_manifest_or_config_file_issue_was_detected_automat_3aba8a'),
                             risk=RiskLevel.MEDIUM,
                             automatic=False,
                             action="manual",
-                            params={"instructions": "打开 Mod 文件夹检查 manifest.json，或重新安装。"},
+                            params={"instructions": tr('services.repair_service.open_the_mod_folder_and_check_manifest_json_or_reins_34823e')},
                             findings=[issue.rule_id or "config"],
                         )
                     )
@@ -234,8 +229,8 @@ class RepairService:
             add_step(
                 RepairStep(
                     id="clean-temp",
-                    title=f"清理 {len(removable)} 个临时文件",
-                    description="删除未完成的下载分片和 24 小时前遗留的安装暂存目录。不会删除 Mod 或备份。",
+                    title=tr('services.repair_service.cleaned_up_0_temporary_files', len(removable)),
+                    description=tr('services.repair_service.deletes_incomplete_download_chunks_and_install_stagi_32ff02'),
                     risk=RiskLevel.LOW,
                     automatic=True,
                     action="clean_temp",
@@ -245,11 +240,7 @@ class RepairService:
             )
 
         steps.sort(key=lambda step: (not step.automatic, step.risk.value))
-        summary = (
-            f"生成 {len(steps)} 个修复步骤，其中 "
-            f"{sum(1 for step in steps if step.automatic)} 个可自动执行、"
-            f"{sum(1 for step in steps if not step.automatic)} 个需要手动操作。"
-        )
+        summary = tr('services.repair_service.generated_0_repair_steps_1_can_run_automatically_and_5f0336', len(steps), sum(1 for step in steps if step.automatic), sum(1 for step in steps if not step.automatic))
         plan_data = RepairPlanData(summary=summary, steps=steps, warnings=warnings)
         with self.db.session() as session:
             plan_row = RepairRepository(session).add(
@@ -260,7 +251,7 @@ class RepairService:
             )
             plan_id = plan_row.id
         if progress:
-            progress(100, "修复计划已生成。")
+            progress(100, tr('services.repair_service.repair_plan_generated'))
         return self.get_plan(plan_id)
 
     def _plan_missing_dependency(
@@ -297,8 +288,8 @@ class RepairService:
                     add_step(
                         RepairStep(
                             id=f"enable-dep-{installed.id}",
-                            title=f"启用依赖：{installed.name}",
-                            description=f"{installed.name} 已安装但被禁用。",
+                            title=tr('services.repair_service.enable_dependencies_0', installed.name),
+                            description=tr('services.repair_service.0_is_installed_but_disabled', installed.name),
                             risk=RiskLevel.LOW,
                             automatic=True,
                             action="enable_mod",
@@ -308,7 +299,7 @@ class RepairService:
                     )
                 else:
                     warnings.append(
-                        f"{dep_name} 已安装，但版本可能不满足要求，请到更新中心检查。"
+                        tr('services.repair_service.0_is_installed_but_its_version_may_not_meet_the_requ_63bad1', dep_name)
                     )
                 continue
 
@@ -328,11 +319,8 @@ class RepairService:
                 add_step(
                     RepairStep(
                         id=f"install-dep-{nexus_mod_id}",
-                        title=f"安装缺失依赖：{dep_name}",
-                        description=(
-                            f"Nexus Mod ID {nexus_mod_id} 由日志中的链接确定。"
-                            "下载与安装遵循 Nexus API；非 Premium 用户可能需要在网页手动下载。"
-                        ),
+                        title=tr('services.repair_service.install_missing_dependencies_0', dep_name),
+                        description=tr('services.repair_service.nexus_mod_id_0_was_determined_from_a_link_in_the_log_3168f0', nexus_mod_id),
                         risk=RiskLevel.MEDIUM,
                         automatic=True,
                         requires_network=True,
@@ -350,18 +338,15 @@ class RepairService:
                 add_step(
                     RepairStep(
                         id=f"manual-dep-{re.sub(r'[^a-zA-Z0-9]+', '-', dep_name)[:60]}",
-                        title=f"手动安装依赖：{dep_name}",
-                        description=(
-                            "日志中给出了依赖名称/UniqueID，但没有可直接确认的 Nexus Mod ID。"
-                            "请根据 Mod 页面依赖说明安装，避免安装同名但错误的 Mod。"
-                        ),
+                        title=tr('services.repair_service.install_dependency_manually_0', dep_name),
+                        description=tr('services.repair_service.the_log_lists_a_dependency_name_uniqueid_but_no_nexu_192281'),
                         risk=RiskLevel.MEDIUM,
                         automatic=False,
                         action="manual",
                         params={
                             "url": "https://www.nexusmods.com/stardewvalley/search/?gsearch="
                             + dep_name.split(".")[-1],
-                            "instructions": "在 Nexus 搜索该依赖并核对 UniqueID，然后导入安装。",
+                            "instructions": tr('services.repair_service.search_for_this_dependency_on_nexus_verify_the_uniqu_f087e3'),
                         },
                         findings=[issue.rule_id or "dependency"],
                     )
@@ -386,7 +371,7 @@ class RepairService:
         with self.db.session() as session:
             row = RepairRepository(session).get(plan_id)
             if row is None:
-                raise RepairError("修复计划不存在。")
+                raise RepairError(tr('services.repair_service.repair_plan_does_not_exist'))
             plan = RepairPlanData.model_validate(row.plan_json)
             return RepairPlanView(
                 id=row.id,
@@ -421,7 +406,7 @@ class RepairService:
             if selected_step_ids is None or step.id in selected_step_ids
         ]
         if not selected:
-            raise RepairError("没有选择任何修复步骤。")
+            raise RepairError(tr('services.repair_service.no_repair_steps_were_selected'))
         before = self._problem_counts(view.game_id)
         reverse_actions: list[tuple[str, dict[str, Any]]] = []
         installed_backups: list[int] = []
@@ -432,11 +417,11 @@ class RepairService:
         try:
             for index, step in enumerate(selected):
                 if progress:
-                    progress(int(index / total * 80), f"执行：{step.title}")
+                    progress(int(index / total * 80), tr('services.repair_service.running_0', step.title))
                 if not step.automatic:
                     step.executed = False
                     step.success = None
-                    step.message = "需手动操作，未自动执行。"
+                    step.message = tr('services.repair_service.requires_manual_action_it_was_not_performed_automati_a6ecb5')
                     executed.append(step)
                     continue
                 try:
@@ -461,16 +446,13 @@ class RepairService:
                     break
                 executed.append(step)
             if progress:
-                progress(90, "正在重新扫描并验证修复结果…")
+                progress(90, tr('services.repair_service.rescanning_and_verifying_repair_results'))
             self.mods.scan_game(view.game_id, record_activity=False)
             after = self._problem_counts(view.game_id)
-            verification = (
-                f"修复前：{before['missing']} 个缺失依赖，{before['duplicates']} 组重复安装；"
-                f"修复后：{after['missing']} 个缺失依赖，{after['duplicates']} 组重复安装。"
-            )
+            verification = tr('services.repair_service.before_repair_0_missing_dependencies_1_duplicate_ins_779e55', before['missing'], before['duplicates'], after['missing'], after['duplicates'])
             worse = after["missing"] > before["missing"] or after["duplicates"] > before["duplicates"]
             if worse:
-                failures.append("验证失败：修复后问题数量增加，正在回滚。")
+                failures.append(tr('services.repair_service.validation_failed_the_number_of_issues_increased_aft_7b37ec'))
                 self._rollback(reverse_actions, installed_backups)
                 status = RepairStatus.ROLLED_BACK.value
             elif failures:
@@ -482,22 +464,22 @@ class RepairService:
                     view.plan.summary,
                     verification,
                     *(
-                        [f"失败：{failure}" for failure in failures]
+                        [tr('services.repair_service.failed_0', failure) for failure in failures]
                         if failures
-                        else ["所有已选择的自动步骤执行成功。"]
+                        else [tr('services.repair_service.all_selected_automatic_steps_completed_successfully')]
                     ),
                 ]
             )
         except Exception as exc:
-            log.exception("修复计划执行异常")
+            log.exception(tr('services.repair_service.repair_plan_execution_error'))
             self._rollback(reverse_actions, installed_backups)
             status = RepairStatus.FAILED.value
-            result_text = f"修复执行失败并已尝试回滚：{exc}"
+            result_text = tr('services.repair_service.repair_failed_and_a_rollback_has_been_attempted_0', exc)
         with self.db.session() as session:
             repo = RepairRepository(session)
             row = repo.get(plan_id)
             if row is None:
-                raise RepairError("修复计划不存在。")
+                raise RepairError(tr('services.repair_service.repair_plan_does_not_exist'))
             updated = view.plan.model_copy(update={"steps": executed + [
                 step for step in view.plan.steps if step.id not in {item.id for item in executed}
             ]})
@@ -510,9 +492,9 @@ class RepairService:
                 applied_at=datetime.now(UTC).replace(tzinfo=None),
             )
         if progress:
-            progress(100, "修复流程完成。")
+            progress(100, tr('services.repair_service.repair_process_completed'))
         self.activity.record(
-            f"修复计划执行完成：{status}",
+            tr('services.repair_service.repair_plan_completed_0', status),
             kind="repair",
             level="warning" if status != RepairStatus.APPLIED.value else "info",
             game_id=view.game_id,
@@ -541,7 +523,7 @@ class RepairService:
             enabled = step.action == "enable_mod"
             self.mods.set_enabled(mod_id, enabled)
             return (
-                f"已{'启用' if enabled else '禁用'} Mod #{mod_id}。",
+                tr('services.repair_service.0_mod_1', tr('services.repair_service.enable') if enabled else tr('services.repair_service.disable'), mod_id),
                 ("enable_mod" if not enabled else "disable_mod", {"mod_id": mod_id}),
             )
         if step.action == "install_dependency":
@@ -554,17 +536,17 @@ class RepairService:
                 progress,
             )
             step.params["backup_ids"] = backups
-            return f"已安装 Nexus Mod {nexus_mod_id}。", None
+            return tr('services.repair_service.installed_nexus_mod_0', nexus_mod_id), None
         if step.action == "restore_backup":
             backup_id = int(params["backup_id"])
             self.mods.rollback(backup_id)
-            return f"已恢复备份 #{backup_id}。", None
+            return tr('services.repair_service.restored_backup_0', backup_id), None
         if step.action == "clean_temp":
             removed = self._clean_temp()
-            return f"已清理 {removed} 个临时文件/目录。", None
+            return tr('services.repair_service.cleaned_up_0_temporary_files_directories', removed), None
         if step.action == "manual":
-            return "手动步骤未自动执行。", None
-        raise RepairError(f"不支持的修复动作：{step.action}")
+            return tr('services.repair_service.manual_steps_were_not_executed_automatically'), None
+        raise RepairError(tr('services.repair_service.unsupported_repair_action_0', step.action))
 
     def _rollback(
         self,
@@ -578,12 +560,12 @@ class RepairService:
                 elif action == "disable_mod":
                     self.mods.set_enabled(int(params["mod_id"]), False)
             except Exception:
-                log.exception("回滚 Mod 状态失败：%s", params)
+                log.exception(tr('services.repair_service.failed_to_roll_back_mod_status_s'), params)
         for backup_id in reversed(backup_ids):
             try:
                 self.mods.rollback(backup_id)
             except Exception:
-                log.exception("回滚修复备份失败：%s", backup_id)
+                log.exception(tr('services.repair_service.failed_to_roll_back_repair_backup_s'), backup_id)
 
     def _clean_temp(self) -> int:
         removed = 0
@@ -616,21 +598,20 @@ class RepairService:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise RepairError("游戏记录不存在。")
+                raise RepairError(tr('services.repair_service.game_record_does_not_exist'))
             domain = game.nexus_domain
         if not domain:
-            raise RepairError("游戏未配置 Nexus 游戏标识。")
+            raise RepairError(tr('services.repair_service.the_game_has_no_nexus_game_id_configured'))
         if progress:
-            progress(10, "正在获取依赖下载信息…")
+            progress(10, tr('services.repair_service.fetching_dependency_download_info'))
         latest = self.nexus.get_latest_file(domain, nexus_mod_id)
         if latest is None:
-            raise RepairError("Nexus 上没有可下载的主文件。")
+            raise RepairError(tr('services.repair_service.no_downloadable_main_file_on_nexus'))
         try:
             links = self.nexus.get_download_links(domain, nexus_mod_id, latest.file_id)
         except NexusPremiumRequired as exc:
             raise RepairError(
-                "该依赖需要 Nexus Premium 才能通过 API 直接下载。"
-                "请在 Nexus 网页手动下载后，使用下载中心的“导入压缩包”，或安装完成后重新诊断。"
+                tr('services.repair_service.this_dependency_requires_nexus_premium_to_be_downloa_0275eb')
             ) from exc
         url = links[0]
         filename = sanitize_filename(
@@ -643,16 +624,16 @@ class RepairService:
         archive = temp_dir / filename
         try:
             if progress:
-                progress(25, f"正在下载依赖 {latest.name}…")
+                progress(25, tr('services.repair_service.downloading_dependency_0', latest.name))
             with httpx.Client(
                 timeout=httpx.Timeout(120.0, connect=20.0),
                 follow_redirects=True,
                 headers={"User-Agent": USER_AGENT},
             ) as client, client.stream("GET", url) as response:
                 if response.status_code in (401, 403):
-                    raise RepairError("下载被 Nexus 拒绝，请手动下载。")
+                    raise RepairError(tr('services.repair_service.the_download_was_rejected_by_nexus_please_download_i_b089ce'))
                 if response.status_code >= 400:
-                    raise RepairError(f"下载失败：HTTP {response.status_code}")
+                    raise RepairError(tr('services.repair_service.download_failed_http_0', response.status_code))
                 with archive.open("wb") as handle:
                     for chunk in response.iter_bytes(256 * 1024):
                         handle.write(chunk)
@@ -662,9 +643,9 @@ class RepairService:
                     while chunk := handle.read(1024 * 1024):
                         digest.update(chunk)
                 if digest.hexdigest().lower() != latest.md5.lower():
-                    raise RepairError("依赖下载文件 MD5 校验失败。")
+                    raise RepairError(tr('services.repair_service.md5_verification_failed_for_the_dependency_download'))
             if progress:
-                progress(70, "正在安装依赖…")
+                progress(70, tr('services.repair_service.installing_dependencies'))
             result = self.mods.install_archive(
                 game_id,
                 archive,
@@ -674,7 +655,7 @@ class RepairService:
                 progress=(lambda p, msg: progress(70 + int(p * 0.25), msg)) if progress else None,
             )
             if progress:
-                progress(97, "正在验证依赖…")
+                progress(97, tr('services.repair_service.verifying_dependencies'))
             views = self.mods.list_mods(game_id)
             matches = [
                 view
@@ -687,7 +668,7 @@ class RepairService:
                 )
             ]
             if unique_id and not matches:
-                log.warning("依赖安装后未找到 UniqueID %s，可能压缩包内目录不同。", unique_id)
+                log.warning(tr('services.repair_service.uniqueid_s_was_not_found_after_installing_the_depend_52d307'), unique_id)
             return result.backup_ids
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)

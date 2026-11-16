@@ -19,6 +19,7 @@ from ..domain.models import (
     GameValidation,
 )
 from .activity import ActivityService
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -43,10 +44,10 @@ class GameService:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.game_service.no_game_has_been_added'))
             adapter = self.registry.try_get(game.adapter_key)
             if adapter is None:
-                raise KeyError(f"找不到游戏适配器：{game.adapter_key}")
+                raise KeyError(tr('services.game_service.game_adapter_not_found_0', game.adapter_key))
             return game, adapter
 
     def detect_installations(self, adapter_key: str) -> list[GameInstallation]:
@@ -67,7 +68,11 @@ class GameService:
             existing = repo.get_by_adapter(adapter_key)
             if existing is not None:
                 raise ValueError(
-                    f"{adapter.name} 已添加（{existing.install_path}）。请先移除现有记录，再添加其他安装位置。"
+                    tr(
+                        'services.game_service.0_has_already_been_added_1_remove_the_existing_entry_cef390',
+                        adapter.display_name,
+                        existing.install_path,
+                    )
                 )
             game = repo.add(
                 adapter_key=adapter_key,
@@ -83,7 +88,7 @@ class GameService:
                 self.config.update(active_game_id=game_id)
             summary = self._summary(session, game)
         self.activity.record(
-            f"已添加游戏：{adapter.name}",
+            tr('services.game_service.added_game_0', adapter.display_name),
             kind="game_add",
             game_id=game_id,
             details={"path": str(validation.install_path)},
@@ -94,23 +99,34 @@ class GameService:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
-            name = game.name
+                raise KeyError(tr('services.game_service.no_game_has_been_added'))
+            adapter = self.registry.try_get(game.adapter_key)
+            name = adapter.display_name if adapter else game.name
             GameRepository(session).delete(game)
             if self.config.config.active_game_id == game_id:
                 remaining = GameRepository(session).list_all()
                 self.config.update(active_game_id=remaining[0].id if remaining else None)
         self.activity.record(
-            f"已移除游戏管理记录（游戏文件未删除）：{name}",
+            tr('services.game_service.removed_game_management_record_game_files_were_not_d_e14c92', name),
             kind="game_remove",
             level="warning",
             details={"game_id": game_id},
         )
 
+    def migrate_display_names(self) -> None:
+        """Store language-neutral adapter message IDs in existing databases."""
+
+        with self.db.session() as session:
+            repo = GameRepository(session)
+            for game in repo.list_all():
+                adapter = self.registry.try_get(game.adapter_key)
+                if adapter and adapter.name and game.name != adapter.name:
+                    repo.update(game, name=adapter.name)
+
     def set_active(self, game_id: int) -> None:
         with self.db.session() as session:
             if GameRepository(session).get(game_id) is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.game_service.no_game_has_been_added'))
         self.config.update(active_game_id=game_id)
 
     def active_game(self) -> GameSummary | None:
@@ -128,7 +144,7 @@ class GameService:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.game_service.no_game_has_been_added'))
             return self._summary(session, game)
 
     def list_games(self) -> list[GameSummary]:
@@ -139,7 +155,7 @@ class GameService:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.game_service.no_game_has_been_added'))
             adapter = self.registry.get(game.adapter_key)
             validation = adapter.validate_installation(Path(game.install_path))
             if not validation.valid:
@@ -160,9 +176,9 @@ class GameService:
             checks.append(
                 EnvironmentCheck(
                     key="path",
-                    label="游戏路径",
+                    label=tr('services.game_service.game_path'),
                     ok=False,
-                    detail="未设置游戏路径。",
+                    detail=tr('services.game_service.game_path_is_not_set'),
                     severity=LogSeverity.CRITICAL,
                 )
             )
@@ -170,7 +186,7 @@ class GameService:
 
     def _summary(self, session, game: Game | None) -> GameSummary:  # type: ignore[no-untyped-def]
         if game is None:
-            raise KeyError("游戏未添加。")
+            raise KeyError(tr('services.game_service.no_game_has_been_added'))
         present = Mod.game_id == game.id, Mod.is_present.is_(True)
         mod_count = session.scalar(select(func.count(Mod.id)).where(*present)) or 0
         enabled_count = (
@@ -198,7 +214,7 @@ class GameService:
         return GameSummary(
             id=game.id,
             adapter_key=game.adapter_key,
-            name=game.name,
+            name=adapter.display_name if adapter else game.name,
             install_path=game.install_path,
             mods_path=game.mods_path,
             nexus_domain=game.nexus_domain,

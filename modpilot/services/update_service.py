@@ -29,6 +29,7 @@ from .activity import ActivityService
 from .download_manager import DownloadManager
 from .mod_service import ModService
 from .nexus.client import NexusClient
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class UpdateService:
                 name=view.name,
                 installed_version=view.version,
                 status=UpdateStatus.ERROR,
-                message="Mod 文件不存在，无法检查更新。",
+                message=tr('services.update_service.mod_file_does_not_exist_cannot_check_for_updates'),
             )
         if not view.nexus_mod_id:
             self.mods.apply_update_metadata(
@@ -95,25 +96,25 @@ class UpdateService:
                 latest_file_id=view.latest_file_id,
                 latest_file_name=view.latest_file_name,
                 status=UpdateStatus.UNKNOWN,
-                error="该 Mod 未关联 Nexus Mod ID，无法检查更新。",
+                error=tr('services.update_service.this_mod_is_not_linked_to_a_nexus_mod_id_so_updates_ba26be'),
             )
             return UpdateCheckResult(
                 mod_id=mod_id,
                 name=view.name,
                 installed_version=view.version,
                 status=UpdateStatus.UNKNOWN,
-                message="未关联 Nexus Mod ID。",
+                message=tr('services.update_service.no_nexus_mod_id_is_linked'),
             )
         with self.db.session() as session:
             game = GameRepository(session).get(view.game_id)
             if game is None:
-                raise NexusError("游戏记录不存在。")
+                raise NexusError(tr('services.update_service.game_record_does_not_exist'))
             domain = game.nexus_domain
         if not domain:
-            raise NexusError("游戏未配置 Nexus 游戏标识。")
+            raise NexusError(tr('services.update_service.the_game_has_no_nexus_game_id_configured'))
 
         if progress:
-            progress(10, f"正在检查 {view.name}…")
+            progress(10, tr('services.update_service.checking_0', view.name))
         previous_latest = view.latest_version
         try:
             info = self.nexus.get_mod(domain, view.nexus_mod_id, include_requirements=False)
@@ -127,26 +128,26 @@ class UpdateService:
             if not latest_version:
                 latest_version = view.version
             if progress:
-                progress(70, "正在比较版本…")
+                progress(70, tr('services.update_service.comparing_versions'))
 
             status = UpdateStatus.UNKNOWN
             message = ""
             if versions_equal(latest_version, view.version):
                 status = UpdateStatus.UP_TO_DATE
-                message = "已是最新版本。"
+                message = tr('services.update_service.already_up_to_date')
             elif view.pinned_version and versions_equal(view.pinned_version, view.version):
                 status = UpdateStatus.UP_TO_DATE
-                message = f"版本已锁定在 {view.pinned_version}。"
+                message = tr('services.update_service.version_is_locked_to_0', view.pinned_version)
             elif view.ignored_version and versions_equal(view.ignored_version, latest_version):
                 status = UpdateStatus.IGNORED
-                message = f"已忽略版本 {latest_version}。"
+                message = tr('services.update_service.version_0_ignored', latest_version)
             elif is_newer(latest_version, view.version) or latest_version != view.version:
                 status = UpdateStatus.AVAILABLE
-                message = f"发现新版本 {latest_version}。"
+                message = tr('services.update_service.new_version_0_found', latest_version)
             policy = self.effective_policy(view)
             if status is UpdateStatus.AVAILABLE and policy is UpdatePolicy.IGNORE:
                 status = UpdateStatus.IGNORED
-                message = f"已按更新策略忽略版本 {latest_version}。"
+                message = tr('services.update_service.ignored_version_0_according_to_the_update_policy', latest_version)
             self.mods.apply_update_metadata(
                 mod_id,
                 latest_version=latest_version,
@@ -159,20 +160,20 @@ class UpdateService:
                 policy = self.effective_policy(view)
                 if policy is UpdatePolicy.NOTIFY and previous_latest != latest_version:
                     self.activity.record(
-                        f"{view.name} 有可用更新：{view.version} → {latest_version}",
+                        tr('services.update_service.update_available_for_0_1_2', view.name, view.version, latest_version),
                         kind="update_available",
                         game_id=view.game_id,
                         details={"mod_id": mod_id, "latest_version": latest_version},
                     )
                 elif policy is UpdatePolicy.CONFIRM_DOWNLOAD and previous_latest != latest_version:
                     self.activity.record(
-                        f"{view.name} 有可用更新，等待你确认下载。",
+                        tr('services.update_service.an_update_is_available_for_0_waiting_for_your_confir_6299d6', view.name),
                         kind="update_confirmation",
                         game_id=view.game_id,
                         details={"mod_id": mod_id, "latest_version": latest_version},
                     )
             if progress:
-                progress(100, "检查完成。")
+                progress(100, tr('services.update_service.check_complete'))
             return UpdateCheckResult(
                 mod_id=mod_id,
                 name=view.name,
@@ -195,7 +196,7 @@ class UpdateService:
                 status=UpdateStatus.ERROR,
                 error=message,
             )
-            log.warning("检查更新失败 %s：%s", view.name, message)
+            log.warning(tr('services.update_service.failed_to_check_for_updates_s_s'), view.name, message)
             return UpdateCheckResult(
                 mod_id=mod_id,
                 name=view.name,
@@ -226,7 +227,7 @@ class UpdateService:
         total = max(1, len(targets))
         for index, view in enumerate(targets):
             if progress:
-                progress(int(index / total * 100), f"检查更新 {index + 1}/{len(targets)}：{view.name}")
+                progress(int(index / total * 100), tr('services.update_service.checking_for_updates_0_1_2', index + 1, len(targets), view.name))
             results.append(self.check_mod(view.id))
             time.sleep(0.15)
 
@@ -243,39 +244,39 @@ class UpdateService:
                         continue
                     self.download_update(result.mod_id)
             except Exception as exc:
-                log.warning("自动下载更新失败 %s：%s", result.name, exc)
+                log.warning(tr('services.update_service.failed_to_auto_download_update_s_s'), result.name, exc)
                 self.activity.record(
-                    f"自动下载更新失败：{result.name} - {exc}",
+                    tr('services.update_service.failed_to_auto_download_update_0_1', result.name, exc),
                     kind="update_download",
                     level="error",
                     game_id=game_id,
                 )
         if progress:
-            progress(100, f"已检查 {len(results)} 个 Mod。")
+            progress(100, tr('services.update_service.checked_0_mods', len(results)))
         return results
 
     def download_update(self, mod_id: int, progress: ProgressCallback | None = None) -> int:
         view = self.mods.get_mod(mod_id)
         if view.pinned_version:
-            raise ModOperationError(f"{view.name} 已锁定版本 {view.pinned_version}，请先解除锁定。")
+            raise ModOperationError(tr('services.update_service.0_is_locked_to_version_1_please_unlock_it_first', view.name, view.pinned_version))
         if not view.nexus_mod_id:
-            raise ModOperationError("该 Mod 未关联 Nexus Mod ID。")
+            raise ModOperationError(tr('services.update_service.this_mod_is_not_linked_to_a_nexus_mod_id'))
         if not view.latest_file_id:
             result = self.check_mod(mod_id)
             if not result.latest_file_id:
-                raise ModOperationError(result.message or "没有可用的更新文件。")
+                raise ModOperationError(result.message or tr('services.update_service.no_update_files_are_available'))
             view = self.mods.get_mod(mod_id)
         with self.db.session() as session:
             game = GameRepository(session).get(view.game_id)
             if game is None:
-                raise ModOperationError("游戏记录不存在。")
+                raise ModOperationError(tr('services.update_service.game_record_does_not_exist'))
             domain = game.nexus_domain
         files = self.nexus.get_files(domain, view.nexus_mod_id)
         file = next((item for item in files if item.file_id == view.latest_file_id), None)
         if file is None:
-            raise ModOperationError("Nexus 上找不到对应的更新文件。")
+            raise ModOperationError(tr('services.update_service.no_matching_update_file_found_on_nexus'))
         if progress:
-            progress(20, "正在创建下载任务…")
+            progress(20, tr('services.update_service.creating_download_task'))
         download = self.downloads.enqueue(
             game_id=view.game_id,
             nexus_mod_id=view.nexus_mod_id,
@@ -296,10 +297,10 @@ class UpdateService:
                 file_name=file.file_name,
                 status="downloading",
                 strategy=self.effective_policy(view).value,
-                message="更新文件下载中",
+                message=tr('services.update_service.downloading_update_file'),
             )
         if progress:
-            progress(100, "下载任务已加入队列。")
+            progress(100, tr('services.update_service.download_task_queued'))
         return download.id
 
     def _check_plan_dependencies(self, plan: InstallPlan, mod_view: ModView) -> list[str]:
@@ -320,24 +321,22 @@ class UpdateService:
                     candidate_view = current.get(key)
                     if candidate_view is None:
                         missing.append(
-                            f"{entry.metadata.name} 需要 {dependency.unique_id}"
+                            tr('services.update_service.0_requires_1', entry.metadata.name, dependency.unique_id)
                             + (
                                 f" ≥ {dependency.minimum_version}"
                                 if dependency.minimum_version
                                 else ""
                             )
-                            + "，但当前未安装或已禁用。"
+                            + tr('services.update_service.but_it_is_not_installed_or_is_currently_disabled')
                         )
                     elif not version_satisfies(candidate_view.version, dependency.minimum_version):
                         missing.append(
-                            f"{entry.metadata.name} 需要 {dependency.unique_id} ≥ {dependency.minimum_version}，"
-                            f"当前版本 {candidate_view.version} 不满足。"
+                            tr('services.update_service.0_requires_1_2_but_the_current_version_3_does_not_sa_d956c8', entry.metadata.name, dependency.unique_id, dependency.minimum_version, candidate_view.version)
                         )
                 else:
                     if not version_satisfies(candidate.metadata.version, dependency.minimum_version):
                         missing.append(
-                            f"更新包中的 {dependency.unique_id} 版本 {candidate.metadata.version} "
-                            f"低于要求的 {dependency.minimum_version}。"
+                            tr('services.update_service.0_version_1_in_the_update_package_is_lower_than_the_678f6e', dependency.unique_id, candidate.metadata.version, dependency.minimum_version)
                         )
         return missing
 
@@ -349,20 +348,20 @@ class UpdateService:
     ) -> int:
         view = self.mods.get_mod(mod_id)
         if not view.latest_version:
-            raise ModOperationError("没有可安装的更新版本信息。")
+            raise ModOperationError(tr('services.update_service.no_installable_update_version_information'))
         if view.pinned_version:
-            raise ModOperationError("该 Mod 已锁定版本，请先解除锁定。")
+            raise ModOperationError(tr('services.update_service.this_mod_s_version_is_locked_unlock_it_first'))
         if progress:
-            progress(5, "正在校验更新包…")
+            progress(5, tr('services.update_service.validating_update_package'))
         plan = self.mods.preview_install(view.game_id, Path(archive_path))
         try:
             missing = self._check_plan_dependencies(plan, view)
             if missing:
                 raise ModOperationError(
-                    "更新可能破坏依赖环境，已阻止自动安装：\n" + "\n".join(missing)
+                    tr('services.update_service.the_update_may_break_the_dependency_environment_so_a_4b554b') + "\n".join(missing)
                 )
             if progress:
-                progress(15, "正在备份并安装更新…")
+                progress(15, tr('services.update_service.backing_up_and_installing_update'))
             result = self.mods.install_plan(
                 view.game_id,
                 plan,
@@ -372,7 +371,7 @@ class UpdateService:
                 progress=lambda p, msg: progress(int(15 + p * 0.7), msg) if progress else None,
             )
             if progress:
-                progress(90, "正在验证安装结果…")
+                progress(90, tr('services.update_service.verifying_installation_result'))
             installed_versions: list[str] = []
             for entry in plan.entries:
                 with self.db.session() as session:
@@ -388,8 +387,8 @@ class UpdateService:
                 if backup_id:
                     self.mods.rollback(backup_id)
                 raise ModOperationError(
-                    f"安装后版本校验失败：期望 {expected}，实际 {installed_versions or '未知'}。"
-                    + ("已自动回滚。" if backup_id else "")
+                    tr('services.update_service.post_install_version_check_failed_expected_0_got_1', expected, installed_versions or tr('services.update_service.unknown'))
+                    + (tr('services.update_service.automatically_rolled_back') if backup_id else "")
                 )
             backup_id = result.backup_ids[0] if result.backup_ids else None
             with self.db.session() as session:
@@ -402,7 +401,7 @@ class UpdateService:
                     file_name=view.latest_file_name,
                     status="installed",
                     strategy=self.effective_policy(view).value,
-                    message="更新安装完成",
+                    message=tr('services.update_service.update_installed_91f47c'),
                     backup_id=backup_id,
                     applied_at=datetime.now(UTC).replace(tzinfo=None),
                 )
@@ -417,13 +416,13 @@ class UpdateService:
                 error=None,
             )
             self.activity.record(
-                f"已更新 {view.name}：{view.version} → {expected}",
+                tr('services.update_service.updated_0_1_2', view.name, view.version, expected),
                 kind="update_install",
                 game_id=view.game_id,
                 details={"backup_id": backup_id},
             )
             if progress:
-                progress(100, "更新安装完成。")
+                progress(100, tr('services.update_service.update_installed'))
             return backup_id or 0
         finally:
             self.mods.discard_preview(plan)
@@ -436,15 +435,15 @@ class UpdateService:
         with self.db.session() as session:
             row = DownloadRepository(session).get(download_id)
             if row is None:
-                raise ModOperationError("下载任务不存在。")
+                raise ModOperationError(tr('services.update_service.download_task_does_not_exist'))
             if row.status != DownloadStatus.COMPLETED.value:
-                raise ModOperationError("下载尚未完成。")
+                raise ModOperationError(tr('services.update_service.the_download_has_not_finished_yet'))
             if row.kind != DownloadKind.UPDATE.value or not row.target_mod_id:
-                raise ModOperationError("该下载不是 Mod 更新包。")
+                raise ModOperationError(tr('services.update_service.this_download_is_not_a_mod_update_package'))
             archive = row.archive_path
             mod_id = row.target_mod_id
         if not archive:
-            raise ModOperationError("下载文件记录缺失。")
+            raise ModOperationError(tr('services.update_service.download_file_record_is_missing'))
         return self.install_downloaded_update(mod_id, Path(archive), progress)
 
     def should_auto_install(self, download_id: int) -> bool:
@@ -478,7 +477,7 @@ class UpdateService:
                 None,
             )
             if candidate is None:
-                raise ModOperationError("没有可用的更新前备份。")
+                raise ModOperationError(tr('services.update_service.no_pre_update_backup_is_available'))
             backup_id = candidate.id
             old_version = view.version
         self.mods.rollback(backup_id)
@@ -491,12 +490,12 @@ class UpdateService:
                 new_version=new_view.version,
                 status="rolled_back",
                 strategy="manual",
-                message="已回滚到更新前版本",
+                message=tr('services.update_service.rolled_back_to_the_version_before_the_update'),
                 backup_id=backup_id,
                 applied_at=datetime.now(UTC).replace(tzinfo=None),
             )
         self.activity.record(
-            f"已回滚更新：{view.name} → {new_view.version}",
+            tr('services.update_service.rolled_back_update_0_1', view.name, new_view.version),
             kind="update_rollback",
             level="warning",
             game_id=view.game_id,

@@ -24,6 +24,7 @@ from ...version import (
     NEXUS_PROTOCOL_VERSION,
     USER_AGENT,
 )
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ class NexusClient:
     def _auth_headers(self) -> dict[str, str]:
         key = self.api_key()
         if not key:
-            raise NexusAuthError("尚未配置 Nexus Mods API Key。请在设置中填写。")
+            raise NexusAuthError(tr('services.nexus.client.nexus_mods_api_key_is_not_configured_please_enter_it_1fd89a'))
         return {"apikey": key}
 
     def _update_rate_limit(self, response: httpx.Response) -> None:
@@ -124,15 +125,15 @@ class NexusClient:
             try:
                 response = self._client.request(method, url, params=params, json=json, headers=headers)
             except httpx.TimeoutException as exc:
-                last_error = NexusError("连接 Nexus Mods 超时，请检查网络。")
-                log.warning("Nexus 请求超时（第 %d 次）：%s", attempt + 1, url)
+                last_error = NexusError(tr('services.nexus.client.timed_out_connecting_to_nexus_mods_check_your_networ_2ec278'))
+                log.warning(tr('services.nexus.client.nexus_request_timed_out_attempt_d_s'), attempt + 1, url)
                 if attempt < 2:
                     time.sleep(1.5 * (attempt + 1))
                     continue
                 raise last_error from exc
             except httpx.HTTPError as exc:
-                last_error = NexusError(f"无法连接 Nexus Mods：{exc}")
-                log.warning("Nexus 网络错误（第 %d 次）：%s", attempt + 1, exc)
+                last_error = NexusError(tr('services.nexus.client.failed_to_connect_to_nexus_mods_0', exc))
+                log.warning(tr('services.nexus.client.nexus_network_error_attempt_d_s'), attempt + 1, exc)
                 if attempt < 2:
                     time.sleep(1.5 * (attempt + 1))
                     continue
@@ -147,35 +148,34 @@ class NexusClient:
                         delay = min(30.0, max(delay, float(retry_after)))
                     except ValueError:
                         pass
-                log.warning("Nexus 返回 %s，%.1f 秒后重试", response.status_code, delay)
+                log.warning(tr('services.nexus.client.nexus_returned_s_retrying_in_1f_seconds'), response.status_code, delay)
                 time.sleep(delay)
                 continue
             if response.status_code == 429:
                 raise NexusRateLimitError(
-                    "Nexus API 请求已达到速率限制，请稍后再试。",
+                    tr('services.nexus.client.nexus_api_rate_limit_reached_please_try_again_later'),
                     detail=response.text[:500],
                 )
             if response.status_code == 401:
-                raise NexusAuthError("Nexus API Key 无效或已过期，请在设置中更新。")
+                raise NexusAuthError(tr('services.nexus.client.nexus_api_key_is_invalid_or_expired_update_it_in_set_6857f7'))
             if response.status_code == 403:
                 message = self._error_message(response)
                 if "premium" in message.lower() or "/download_link" in url:
                     raise NexusPremiumRequired(
-                        "Nexus 仅允许 Premium 会员通过 API 获取直接下载链接。"
-                        "你仍可手动在 Nexus 网页下载后使用“导入压缩包”。",
+                        tr('services.nexus.client.nexus_only_provides_direct_download_links_via_the_ap_ffa457'),
                         detail=message,
                     )
-                raise NexusError(f"Nexus 拒绝访问：{message}")
+                raise NexusError(tr('services.nexus.client.nexus_denied_access_0', message))
             if response.status_code == 404:
-                raise NexusNotFoundError("Nexus 上未找到对应内容。")
+                raise NexusNotFoundError(tr('services.nexus.client.no_matching_content_found_on_nexus'))
             if response.status_code >= 400:
-                raise NexusError(f"Nexus API 错误 ({response.status_code})：{self._error_message(response)}")
+                raise NexusError(tr('services.nexus.client.nexus_api_error_0_1', response.status_code, self._error_message(response)))
 
             try:
                 return response.json()
             except ValueError as exc:
-                raise NexusError("Nexus 返回了无法解析的响应。") from exc
-        raise last_error or NexusError("Nexus 请求失败。")
+                raise NexusError(tr('services.nexus.client.nexus_returned_an_unparseable_response')) from exc
+        raise last_error or NexusError(tr('services.nexus.client.nexus_request_failed'))
 
     @staticmethod
     def _error_message(response: httpx.Response) -> str:
@@ -192,14 +192,14 @@ class NexusClient:
     def validate_key(self) -> dict[str, Any]:
         data = self._request("GET", f"{API_BASE}/v1/users/validate.json")
         if not isinstance(data, dict):
-            raise NexusAuthError("Nexus 返回了意外的验证结果。")
+            raise NexusAuthError(tr('services.nexus.client.nexus_returned_an_unexpected_validation_result'))
         self.last_user = data
         return data
 
     def get_game(self, domain: str) -> dict[str, Any]:
         data = self._request("GET", f"{API_BASE}/v1/games/{domain}.json")
         if not isinstance(data, dict):
-            raise NexusError("Nexus 游戏信息格式异常。")
+            raise NexusError(tr('services.nexus.client.unexpected_nexus_game_info_format'))
         if data.get("id") is not None:
             try:
                 self._game_id_cache[domain] = int(data["id"])
@@ -214,7 +214,7 @@ class NexusClient:
         try:
             return int(data["id"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise NexusError("无法获取 Nexus 游戏 ID。") from exc
+            raise NexusError(tr('services.nexus.client.failed_to_get_the_nexus_game_id')) from exc
 
     def get_mod(
         self,
@@ -225,13 +225,13 @@ class NexusClient:
     ) -> NexusModInfo:
         data = self._request("GET", f"{API_BASE}/v1/games/{domain}/mods/{mod_id}.json")
         if not isinstance(data, dict):
-            raise NexusError("Nexus Mod 信息格式异常。")
+            raise NexusError(tr('services.nexus.client.unexpected_nexus_mod_info_format'))
         requirements: list[NexusRequirement] = []
         if include_requirements:
             try:
                 requirements = self.get_requirements(domain, mod_id)
             except Exception as exc:
-                log.info("读取 Nexus 依赖信息失败（不影响 Mod 详情）：%s", exc)
+                log.info(tr('services.nexus.client.failed_to_read_nexus_dependency_information_mod_deta_409796'), exc)
         return NexusModInfo(
             mod_id=int(data.get("mod_id") or mod_id),
             game_domain=str(data.get("domain_name") or domain),
@@ -294,7 +294,7 @@ class NexusClient:
     def get_files(self, domain: str, mod_id: int) -> list[NexusFile]:
         data = self._request("GET", f"{API_BASE}/v1/games/{domain}/mods/{mod_id}/files.json")
         if not isinstance(data, dict):
-            raise NexusError("Nexus 文件列表格式异常。")
+            raise NexusError(tr('services.nexus.client.unexpected_nexus_file_list_format'))
         files = data.get("files") or []
         result: list[NexusFile] = []
         for raw in files:
@@ -318,7 +318,7 @@ class NexusClient:
                     )
                 )
             except (TypeError, ValueError) as exc:
-                log.debug("忽略异常的 Nexus 文件条目：%s", exc)
+                log.debug(tr('services.nexus.client.ignoring_invalid_nexus_file_entry_s'), exc)
         result.sort(key=lambda item: item.uploaded_timestamp, reverse=True)
         return result
 
@@ -346,7 +346,7 @@ class NexusClient:
             f"{API_BASE}/v1/games/{domain}/mods/{mod_id}/files/{file_id}/download_link.json",
         )
         if not isinstance(data, list):
-            raise NexusError("Nexus 下载链接响应格式异常。")
+            raise NexusError(tr('services.nexus.client.unexpected_nexus_download_link_response_format'))
         links: list[str] = []
         for item in data:
             if not isinstance(item, dict):
@@ -356,10 +356,10 @@ class NexusClient:
                 continue
             parsed = urlparse(url)
             if parsed.scheme != "https":
-                raise NexusError("Nexus 返回了非 HTTPS 下载链接，已拒绝。")
+                raise NexusError(tr('services.nexus.client.nexus_returned_a_non_https_download_link_rejected'))
             links.append(url)
         if not links:
-            raise NexusError("Nexus 未返回可用下载链接。")
+            raise NexusError(tr('services.nexus.client.nexus_did_not_return_a_usable_download_link'))
         return links
 
     def _graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
@@ -369,16 +369,16 @@ class NexusClient:
             json={"query": query, "variables": variables},
         )
         if not isinstance(data, dict):
-            raise NexusError("Nexus GraphQL 响应格式异常。")
+            raise NexusError(tr('services.nexus.client.unexpected_nexus_graphql_response_format'))
         if data.get("errors"):
             messages = "; ".join(
                 str(error.get("message", error)) if isinstance(error, dict) else str(error)
                 for error in data["errors"]
             )
-            raise NexusError(f"Nexus 查询失败：{messages}")
+            raise NexusError(tr('services.nexus.client.nexus_query_failed_0', messages))
         payload = data.get("data")
         if not isinstance(payload, dict):
-            raise NexusError("Nexus 查询返回数据为空。")
+            raise NexusError(tr('services.nexus.client.nexus_query_returned_empty_data'))
         return payload
 
     def search_mods(self, domain: str, query: str, *, count: int = 12) -> list[NexusSearchResult]:

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .errors import CredentialError
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +31,9 @@ class SecretBackend(Protocol):
 
 
 class InMemorySecretBackend:
-    name = "内存（仅测试）"
+    @property
+    def name(self) -> str:
+        return tr('core.credentials.memory_test_only')
 
     def __init__(self, initial: dict[str, str] | None = None) -> None:
         self._values = dict(initial or {})
@@ -49,7 +52,9 @@ class InMemorySecretBackend:
 
 
 class KeyringBackend:
-    name = "Windows 凭据管理器"
+    @property
+    def name(self) -> str:
+        return tr('core.credentials.windows_credential_manager')
 
     def __init__(self) -> None:
         import keyring  # imported lazily so tests can avoid platform backends
@@ -88,11 +93,13 @@ class DpapiBackend:
     be decrypted by the same Windows user on the same machine.
     """
 
-    name = "Windows DPAPI 加密文件"
+    @property
+    def name(self) -> str:
+        return tr('core.credentials.windows_dpapi_encrypted_file')
 
     def __init__(self, path: Path) -> None:
         if sys.platform != "win32":
-            raise CredentialError("DPAPI 仅在 Windows 上可用")
+            raise CredentialError(tr('core.credentials.dpapi_is_only_available_on_windows'))
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -103,7 +110,7 @@ class DpapiBackend:
             data = json.loads(self.path.read_text(encoding="utf-8"))
             return {str(k): str(v) for k, v in data.items()}
         except Exception as exc:
-            raise CredentialError(f"凭据文件损坏：{exc}") from exc
+            raise CredentialError(tr('core.credentials.credential_file_corrupted_0', exc)) from exc
 
     def _save(self, data: dict[str, str]) -> None:
         temp = self.path.with_suffix(".tmp")
@@ -124,7 +131,7 @@ class DpapiBackend:
             0,
             ctypes.byref(blob_out),
         ):
-            raise CredentialError("DPAPI 加密失败")
+            raise CredentialError(tr('core.credentials.dpapi_encryption_failed'))
         try:
             encrypted = ctypes.string_at(blob_out.pbData, blob_out.cbData)
             return base64.b64encode(encrypted).decode("ascii")
@@ -136,7 +143,7 @@ class DpapiBackend:
         try:
             encrypted = base64.b64decode(value)
         except Exception as exc:
-            raise CredentialError("DPAPI 凭据格式无效") from exc
+            raise CredentialError(tr('core.credentials.invalid_dpapi_credential_format')) from exc
         blob_in = _DataBlob(
             len(encrypted), ctypes.cast(ctypes.c_char_p(encrypted), ctypes.POINTER(ctypes.c_char))
         )
@@ -150,7 +157,7 @@ class DpapiBackend:
             0,
             ctypes.byref(blob_out),
         ):
-            raise CredentialError("DPAPI 解密失败，可能不是同一 Windows 用户")
+            raise CredentialError(tr('core.credentials.dpapi_decryption_failed_a_different_windows_user_may_d258ad'))
         try:
             return ctypes.string_at(blob_out.pbData, blob_out.cbData).decode("utf-8")
         finally:
@@ -181,7 +188,7 @@ class CredentialStore:
     def __init__(self, data_dir: Path, backend: SecretBackend | None = None) -> None:
         self.data_dir = data_dir
         self._backend = backend or self._choose_backend()
-        log.info("凭据存储后端：%s", self._backend.name)
+        log.info(tr('core.credentials.credential_storage_backend_s'), self._backend.name)
 
     def _choose_backend(self) -> SecretBackend:
         try:
@@ -190,7 +197,7 @@ class CredentialStore:
             backend.get("__modpilot_probe__")
             return backend
         except Exception as exc:
-            log.warning("Windows 凭据管理器不可用，回退到 DPAPI：%s", exc)
+            log.warning(tr('core.credentials.windows_credential_manager_is_unavailable_falling_ba_8b30a0'), exc)
         if sys.platform == "win32":
             return DpapiBackend(self.data_dir / "credentials.dat")
         return InMemorySecretBackend()
@@ -204,21 +211,21 @@ class CredentialStore:
             value = self._backend.get(key)
             return value if value else None
         except Exception as exc:
-            log.error("读取凭据失败（%s）：%s", key, exc)
-            raise CredentialError(f"无法读取凭据：{exc}") from exc
+            log.error(tr('core.credentials.failed_to_read_credentials_s_s'), key, exc)
+            raise CredentialError(tr('core.credentials.failed_to_read_credentials_0', exc)) from exc
 
     def set(self, key: str, value: str) -> None:
         try:
             self._backend.set(key, value.strip())
         except Exception as exc:
-            log.error("保存凭据失败（%s）：%s", key, exc)
-            raise CredentialError(f"无法保存凭据：{exc}") from exc
+            log.error(tr('core.credentials.failed_to_save_credentials_s_s'), key, exc)
+            raise CredentialError(tr('core.credentials.failed_to_save_credentials_0', exc)) from exc
 
     def delete(self, key: str) -> None:
         try:
             self._backend.delete(key)
         except Exception as exc:
-            raise CredentialError(f"无法删除凭据：{exc}") from exc
+            raise CredentialError(tr('core.credentials.failed_to_delete_credentials_0', exc)) from exc
 
     def has(self, key: str) -> bool:
         return bool(self.get(key))

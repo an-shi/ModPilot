@@ -39,6 +39,7 @@ from ..activity import ActivityService
 from ..backup_service import BackupService
 from ..nexus.client import NexusClient
 from .llm import LlmClient
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -82,24 +83,24 @@ class TranslationEngine:
         with self.db.session() as session:
             mod = ModRepository(session).get(mod_id)
             if mod is None:
-                raise TranslationError("Mod 不存在。")
+                raise TranslationError(tr('services.translation.engine.mod_does_not_exist'))
             game = GameRepository(session).get(mod.game_id)
             if game is None:
-                raise TranslationError("游戏记录不存在。")
+                raise TranslationError(tr('services.translation.engine.game_record_does_not_exist'))
             adapter = self.registry.get(game.adapter_key)
             mod_dir = (Path(game.mods_path) / mod.relative_path).resolve()
             if not mod_dir.is_dir():
-                raise TranslationError("Mod 文件夹不存在，请重新扫描。")
+                raise TranslationError(tr('services.translation.engine.mod_folder_does_not_exist_please_rescan'))
             plan = adapter.build_translation_plan(mod_dir)
             if plan is None:
-                raise TranslationError("该 Mod 没有可翻译的标准语言文件。")
+                raise TranslationError(tr('services.translation.engine.this_mod_has_no_standard_language_files_to_translate'))
             return mod, game, adapter, mod_dir, plan
 
     def overview(self, game_id: int, language: str = "zh") -> list[TranslationOverview]:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise TranslationError("游戏未添加。")
+                raise TranslationError(tr('services.translation.engine.no_game_has_been_added'))
             adapter = self.registry.get(game.adapter_key)
             mods = ModRepository(session).list_for_game(game_id, include_missing=False)
             counts = TranslationRepository(session).counts_by_mod(
@@ -231,7 +232,7 @@ class TranslationEngine:
                                     else TranslationOrigin.NONE.value
                                 ),
                                 "confirmed": False,
-                                "error": "源文本已变化，建议重新翻译。",
+                                "error": tr('services.translation.engine.the_source_text_has_changed_retranslation_is_recomme_9aed87'),
                             }
                         )
                     elif not record.translated_text and target_value:
@@ -306,7 +307,7 @@ class TranslationEngine:
                     not record.confirmed
                     and (
                         not record.translated_text.strip()
-                        or (record.error or "").startswith("源文本已变化")
+                        or (record.error or "").startswith(tr('services.translation.engine.source_text_changed'))
                     )
                 )
             )
@@ -352,18 +353,18 @@ class TranslationEngine:
                 if progress:
                     progress(
                         int(index / max(1, len(selected)) * 15),
-                        f"准备翻译 {index + 1}/{len(selected)}…",
+                        tr('services.translation.engine.preparing_translation_0_1', index + 1, len(selected)),
                     )
 
         if pending:
             if not self.llm.is_configured():
-                raise LlmError("尚未配置 AI 模型或 API Key。可在设置中启用 AI 翻译，或手动导入汉化包。")
+                raise LlmError(tr('services.translation.engine.ai_model_or_api_key_is_not_configured_enable_ai_tran_233485'))
             batches = self._make_batches(pending)
             for batch_index, batch in enumerate(batches):
                 if progress:
                     progress(
                         15 + int(batch_index / max(1, len(batches)) * 65),
-                        f"AI 翻译第 {batch_index + 1}/{len(batches)} 批（{len(batch)} 条）…",
+                        tr('services.translation.engine.ai_translation_batch_0_1_2_entries', batch_index + 1, len(batches), len(batch)),
                     )
                 try:
                     results = self._translate_batch(batch, plan, adapter)
@@ -398,7 +399,7 @@ class TranslationEngine:
                 except Exception as exc:
                     message = str(exc) or exc.__class__.__name__
                     failures.append(message)
-                    log.warning("翻译批次失败：%s", message)
+                    log.warning(tr('services.translation.engine.translation_batch_failed_s'), message)
                     with self.db.session() as session:
                         repo = TranslationRepository(session)
                         for unit in batch:
@@ -410,16 +411,16 @@ class TranslationEngine:
                                     error=message,
                                 )
         if progress:
-            progress(85, "正在校验并写入汉化文件…")
+            progress(85, tr('services.translation.engine.validating_and_writing_translation_files'))
         if translations:
             translations = self._merge_with_existing(plan, translations)
             self._write_target(game, mod, adapter, mod_dir, plan, language, translations)
         if progress:
-            progress(100, "翻译完成。")
+            progress(100, tr('services.translation.engine.translation_complete'))
         if failures and not translations:
-            raise LlmError("AI 翻译失败：" + failures[0])
+            raise LlmError(tr('services.translation.engine.ai_translation_failed') + failures[0])
         self.activity.record(
-            f"AI 翻译完成：{mod.name}（新增 {len(translations)} 条）",
+            tr('services.translation.engine.ai_translation_complete_0_1_new_entries', mod.name, len(translations)),
             kind="translation",
             game_id=game.id,
             details={"mod_id": mod.id, "count": len(translations), "failures": failures},
@@ -498,16 +499,16 @@ class TranslationEngine:
                 value = payload.get(unit.key)
                 if not isinstance(value, str) or not value.strip():
                     retry.append(unit)
-                    retry_errors.append(f"{unit.key}: 缺少译文")
+                    retry_errors.append(tr('services.translation.engine.0_missing_translation', unit.key))
                     continue
                 restored, missing = restore_tokens(value, token_map.get(unit.key, []))
                 if missing:
                     retry.append(unit)
-                    retry_errors.append(f"{unit.key}: 占位符标记丢失")
+                    retry_errors.append(tr('services.translation.engine.0_placeholder_token_lost', unit.key))
                     continue
                 if contains_markers(restored):
                     retry.append(unit)
-                    retry_errors.append(f"{unit.key}: 译文残留占位符标记")
+                    retry_errors.append(tr('services.translation.engine.0_translation_contains_a_leftover_placeholder_token', unit.key))
                     continue
                 errors = validate_placeholders(unit.source_text, restored)
                 if not errors:
@@ -519,7 +520,7 @@ class TranslationEngine:
                 results.append((unit, restored, model))
             if not retry:
                 return results
-            last_error = LlmError("部分条目校验失败：" + "；".join(retry_errors[:5]))
+            last_error = LlmError(tr('services.translation.engine.some_entries_failed_validation') + "；".join(retry_errors[:5]))
             if attempt == 0:
                 messages = [
                     {"role": "system", "content": system},
@@ -541,7 +542,7 @@ class TranslationEngine:
                 break
         if results:
             return results
-        raise LlmError(str(last_error) if last_error else "AI 未返回有效译文。")
+        raise LlmError(str(last_error) if last_error else tr('services.translation.engine.ai_did_not_return_a_valid_translation'))
 
     def _merge_with_existing(self, plan: TranslationPlan, translations: dict[str, str]) -> dict[str, str]:
         merged = {
@@ -568,17 +569,17 @@ class TranslationEngine:
     ) -> TranslationApplyResult:
         errors = adapter.validate_translation(plan, translations)
         if errors:
-            raise TranslationError("译文校验失败：" + "；".join(errors[:8]))
+            raise TranslationError(tr('services.translation.engine.translation_validation_failed') + "；".join(errors[:8]))
         if not translations:
-            raise TranslationError("没有可写入的译文。")
+            raise TranslationError(tr('services.translation.engine.there_are_no_translations_to_write'))
         backup_items = [plan.source_file.parent]
         backup = self.backups.create(
             game_id=game.id,
             root=mod_dir,
             items=backup_items,
             kind="translation",
-            label=f"汉化 {mod.name}",
-            note=f"写入 {plan.target_file.name} 前自动备份",
+            label=tr('services.translation.engine.translating_0', mod.name),
+            note=tr('services.translation.engine.automatic_backup_before_writing_0', plan.target_file.name),
             mod_id=mod.id,
             extra={"target_file": plan.target_file.relative_to(mod_dir).as_posix()},
         )
@@ -586,14 +587,14 @@ class TranslationEngine:
             result = adapter.write_translation(plan, translations)
             result.backup_id = backup.id
         except Exception:
-            log.exception("写入汉化失败，正在恢复备份")
+            log.exception(tr('services.translation.engine.failed_to_write_localization_restoring_backup'))
             try:
                 self.backups.manager.restore(backup.path, root=mod_dir)
             except Exception:
-                log.exception("恢复汉化备份失败，请手动使用备份恢复")
+                log.exception(tr('services.translation.engine.failed_to_restore_the_translation_backup_please_rest_993714'))
             raise
         self.activity.record(
-            f"已写入汉化：{mod.name}（{result.translated_units} 条）",
+            tr('services.translation.engine.wrote_translation_0_1_entries', mod.name, result.translated_units),
             kind="translation_write",
             game_id=game.id,
             details={"backup_id": backup.id, "target": str(result.target_file)},
@@ -611,7 +612,7 @@ class TranslationEngine:
         with self.db.session() as session:
             unit = TranslationRepository(session).get_unit(unit_id)
             if unit is None:
-                raise TranslationError("译文条目不存在。")
+                raise TranslationError(tr('services.translation.engine.translation_entry_does_not_exist'))
             mod_id = unit.mod_id
             source_text = unit.source_text
             key = unit.key
@@ -622,12 +623,12 @@ class TranslationEngine:
             if not errors:
                 errors = adapter.validate_translation(plan, {key: text})
             if errors:
-                raise TranslationError("译文校验失败：" + "；".join(errors))
+                raise TranslationError(tr('services.translation.engine.translation_validation_failed') + "；".join(errors))
         records = self._sync_units(mod, mod_dir, plan, language)
         by_key = {record.key: record for record in records}
         record = by_key.get(key)
         if record is None:
-            raise TranslationError("源文件中的该条目已不存在，请刷新。")
+            raise TranslationError(tr('services.translation.engine.this_entry_no_longer_exists_in_the_source_file_pleas_965ba8'))
         translations = {
             other.key: other.translated_text
             for other in records
@@ -637,14 +638,14 @@ class TranslationEngine:
             repo = TranslationRepository(session)
             fresh = repo.get_unit(unit_id)
             if fresh is None:
-                raise TranslationError("译文条目不存在。")
+                raise TranslationError(tr('services.translation.engine.translation_entry_does_not_exist'))
             status = TranslationStatus.CONFIRMED if confirmed else TranslationStatus.TRANSLATED
             repo.update_unit(
                 fresh,
                 translated_text=text,
                 status=status.value if text.strip() else TranslationStatus.PENDING.value,
                 origin=TranslationOrigin.HUMAN.value if text.strip() else TranslationOrigin.NONE.value,
-                model="人工编辑",
+                model=tr('services.translation.engine.manual_edits'),
                 confirmed=bool(confirmed and text.strip()),
                 error=None,
             )
@@ -657,7 +658,7 @@ class TranslationEngine:
                     source_text=source_text,
                     translated_text=text,
                     origin=TranslationOrigin.HUMAN.value,
-                    model="人工确认",
+                    model=tr('services.translation.engine.manual_confirmation'),
                     confirmed=True,
                 )
         if text.strip():
@@ -665,16 +666,16 @@ class TranslationEngine:
         else:
             translations.pop(key, None)
         if not translations:
-            raise TranslationError("没有可写入的译文。")
+            raise TranslationError(tr('services.translation.engine.there_are_no_translations_to_write'))
         return self._write_target(game, mod, adapter, mod_dir, plan, language, translations)
 
     def confirm_unit(self, unit_id: int, language: str = "zh") -> TranslationApplyResult:
         with self.db.session() as session:
             unit = TranslationRepository(session).get_unit(unit_id)
             if unit is None:
-                raise TranslationError("译文条目不存在。")
+                raise TranslationError(tr('services.translation.engine.translation_entry_does_not_exist'))
             if not unit.translated_text.strip():
-                raise TranslationError("该条目还没有译文。")
+                raise TranslationError(tr('services.translation.engine.this_entry_has_no_translation_yet'))
             text = unit.translated_text
         return self.save_unit(unit_id, text, confirmed=True, language=language)
 
@@ -687,7 +688,7 @@ class TranslationEngine:
             if record.translated_text.strip()
         }
         if not translations:
-            raise TranslationError("没有已保存的译文。")
+            raise TranslationError(tr('services.translation.engine.no_saved_translations'))
         return self._write_target(game, mod, adapter, mod_dir, plan, language, translations)
 
     def remove_translation(self, mod_id: int, language: str = "zh") -> Path:
@@ -699,13 +700,13 @@ class TranslationEngine:
             root=mod_dir,
             items=[plan.target_file],
             kind="translation",
-            label=f"移除汉化 {mod.name}",
-            note="移除生成的目标语言文件前自动备份",
+            label=tr('services.translation.engine.remove_translation_0', mod.name),
+            note=tr('services.translation.engine.automatically_back_up_before_removing_generated_targ_f288bc'),
             mod_id=mod.id,
         )
         plan.target_file.unlink(missing_ok=True)
         self.activity.record(
-            f"已移除汉化文件：{plan.target_file.name}（Mod 原始文件未修改）",
+            tr('services.translation.engine.removed_translation_file_0_the_mod_s_original_files_5757aa', plan.target_file.name),
             kind="translation_remove",
             level="warning",
             game_id=game.id,
@@ -739,7 +740,7 @@ class TranslationEngine:
         warnings: list[str] = []
         candidates: list[TranslationCandidate] = []
         name = mod.name
-        term_list = [f"{name} translation", f"{name} chinese", f"{name} 汉化", mod.unique_id]
+        term_list = [f"{name} translation", f"{name} chinese", tr('services.translation.engine.0_chinese_localization', name), mod.unique_id]
         with self.db.session() as session:
             domain = GameRepository(session).get(game.id).nexus_domain  # type: ignore[union-attr]
 
@@ -749,7 +750,7 @@ class TranslationEngine:
                 try:
                     results = self.nexus.search_mods(domain, term, count=6)
                 except Exception as exc:
-                    warnings.append(f"Nexus 搜索失败：{exc}")
+                    warnings.append(tr('services.translation.engine.nexus_search_failed_0', exc))
                     break
                 for result in results:
                     if result.mod_id in seen_ids or result.mod_id == mod.nexus_mod_id:
@@ -792,14 +793,14 @@ class TranslationEngine:
                         )
                     )
         else:
-            warnings.append("未配置 Nexus API Key，已跳过 Nexus 汉化包搜索。")
+            warnings.append(tr('services.translation.engine.nexus_api_key_is_not_configured_skipped_nexus_transl_bf5946'))
 
         try:
             candidates.extend(
                 self._search_github(name, mod.unique_id, mod.nexus_mod_id, warnings)
             )
         except Exception as exc:
-            warnings.append(f"GitHub 搜索失败：{exc}")
+            warnings.append(tr('services.translation.engine.github_search_failed_0', exc))
 
         deduped: dict[str, TranslationCandidate] = {}
         for candidate in candidates:
@@ -833,7 +834,7 @@ class TranslationEngine:
         nexus_mod_id: int | None,
         warnings: list[str],
     ) -> list[TranslationCandidate]:
-        queries = [f'"{name}" stardew valley translation', f'"{name}" 汉化']
+        queries = [f'"{name}" stardew valley translation', tr('services.translation.engine.0_chinese_translation', name)]
         results: list[TranslationCandidate] = []
         seen: set[str] = set()
         with httpx.Client(
@@ -849,17 +850,17 @@ class TranslationEngine:
                 if response.status_code == 403 or response.status_code == 429:
                     reset = response.headers.get("X-RateLimit-Reset", "")
                     warnings.append(
-                        "GitHub 搜索触发速率限制，请稍后再试。"
-                        + (f" 重置时间戳：{reset}" if reset else "")
+                        tr('services.translation.engine.github_search_rate_limit_reached_please_try_again_la_da0c55')
+                        + (tr('services.translation.engine.reset_timestamp_0', reset) if reset else "")
                     )
                     break
                 if response.status_code >= 400:
-                    warnings.append(f"GitHub 搜索返回 HTTP {response.status_code}。")
+                    warnings.append(tr('services.translation.engine.github_search_returned_http_0', response.status_code))
                     break
                 try:
                     payload = response.json()
                 except ValueError:
-                    warnings.append("GitHub 搜索返回了无法解析的数据。")
+                    warnings.append(tr('services.translation.engine.github_search_returned_unparseable_data'))
                     break
                 for repo in payload.get("items", []):
                     if not isinstance(repo, dict):
@@ -910,7 +911,7 @@ class TranslationEngine:
         normalized_name = name.casefold().strip()
         if normalized_name and normalized_name in text:
             score += 42
-            reasons.append("标题或描述包含原 Mod 名称")
+            reasons.append(tr('services.translation.engine.title_or_description_contains_the_original_mod_name'))
         else:
             words = [
                 word
@@ -920,36 +921,36 @@ class TranslationEngine:
             matched = [word for word in words if word in text]
             if matched:
                 score += min(25, 8 * len(matched))
-                reasons.append("匹配名称关键词：" + "、".join(matched[:4]))
+                reasons.append(tr('services.translation.engine.matching_name_keywords') + "、".join(matched[:4]))
         if unique_id.casefold() in text:
             score += 22
-            reasons.append("包含原 Mod UniqueID")
+            reasons.append(tr('services.translation.engine.contains_the_original_mod_uniqueid'))
         if nexus_mod_id and (
             f"mods/{nexus_mod_id}" in text or f"nexus:{nexus_mod_id}" in text
         ):
             score += 22
-            reasons.append("包含原 Mod 的 Nexus ID")
+            reasons.append(tr('services.translation.engine.contains_the_original_mod_s_nexus_id'))
         keyword_hits = [
             keyword
-            for keyword in ("汉化", "中文", "chinese", "translation", "translate", "zh-cn", "简体")
+            for keyword in (tr('services.translation.engine.translation'), tr('services.translation.engine.chinese'), "chinese", "translation", "translate", "zh-cn", tr('services.translation.engine.simplified'))
             if keyword in text
         ]
         if keyword_hits:
             score += 18
-            reasons.append("包含汉化关键词")
+            reasons.append(tr('services.translation.engine.contains_localization_keywords'))
         if source == "github":
             score += 2
         if not reasons:
-            reasons.append("仅搜索结果相关，未发现明确的版本兼容证据")
+            reasons.append(tr('services.translation.engine.search_result_relevance_only_no_clear_version_compat_a2b398'))
         return min(score, 100), reasons
 
     @staticmethod
     def _compatibility_label(score: int) -> str:
         if score >= 70:
-            return "较可能匹配，但请在应用前核对汉化包版本"
+            return tr('services.translation.engine.likely_match_but_check_the_translation_pack_version_84f523')
         if score >= 45:
-            return "可能相关，需要人工确认"
-        return "低置信度，仅名称/关键词相关"
+            return tr('services.translation.engine.possibly_related_manual_confirmation_required')
+        return tr('services.translation.engine.low_confidence_name_keyword_match_only')
 
     def import_pack_archive(self, mod_id: int, archive_path: Path, language: str = "zh") -> TranslationApplyResult:
         mod, game, adapter, mod_dir, plan = self._load_context(mod_id)
@@ -961,14 +962,14 @@ class TranslationEngine:
                 key=lambda path: (0 if path.parent.name == "i18n" else 1, len(path.parts)),
             )
             if not candidates:
-                raise TranslationError("压缩包中没有找到 i18n/zh.json 汉化文件。")
+                raise TranslationError(tr('services.translation.engine.no_i18n_zh_json_localization_file_was_found_in_the_a_03593c'))
             source = candidates[0]
             try:
                 data = json.loads(source.read_text(encoding="utf-8-sig"))
             except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
-                raise TranslationError(f"汉化文件无法读取：{exc}") from exc
+                raise TranslationError(tr('services.translation.engine.cannot_read_translation_file_0', exc)) from exc
             if not isinstance(data, dict):
-                raise TranslationError("汉化文件必须是 JSON 对象。")
+                raise TranslationError(tr('services.translation.engine.the_translation_file_must_be_a_json_object'))
             valid_keys = {unit.key for unit in plan.units}
             warnings: list[str] = []
             translations: dict[str, str] = {}
@@ -977,13 +978,13 @@ class TranslationEngine:
                     continue
                 translations[str(key)] = value
             if not translations:
-                raise TranslationError("汉化包中没有与当前 Mod 源文件匹配的键，可能版本不兼容。")
+                raise TranslationError(tr('services.translation.engine.the_translation_pack_has_no_keys_matching_the_curren_5dfb9f'))
             unknown = len(data) - len(translations)
             if unknown > 0:
-                warnings.append(f"已忽略 {unknown} 个源文件中不存在的键。")
+                warnings.append(tr('services.translation.engine.ignored_0_keys_that_do_not_exist_in_the_source_file', unknown))
             errors = adapter.validate_translation(plan, translations)
             if errors:
-                raise TranslationError("汉化包校验失败：" + "；".join(errors[:8]))
+                raise TranslationError(tr('services.translation.engine.translation_pack_validation_failed') + "；".join(errors[:8]))
             records = self._sync_units(mod, mod_dir, plan, language)
             by_key = {record.key: record for record in records}
             with self.db.session() as session:
@@ -997,7 +998,7 @@ class TranslationEngine:
                         translated_text=value,
                         status=TranslationStatus.TRANSLATED.value,
                         origin=TranslationOrigin.EXISTING.value,
-                        model="外部汉化包",
+                        model=tr('services.translation.engine.external_localization_pack'),
                         confirmed=False,
                         error=None,
                     )
@@ -1005,10 +1006,10 @@ class TranslationEngine:
             result = self._write_target(game, mod, adapter, mod_dir, plan, language, merged)
             result.warnings.extend(warnings)
             result.warnings.append(
-                "已通过键名与占位符校验，但 ModPilot 无法自动证明汉化包适用于当前 Mod 版本，请进入游戏验证。"
+                tr('services.translation.engine.key_names_and_placeholders_were_validated_but_modpil_0bf567')
             )
             self.activity.record(
-                f"已导入汉化包：{mod.name}（{len(translations)} 条）",
+                tr('services.translation.engine.imported_translation_pack_0_1_entries', mod.name, len(translations)),
                 kind="translation_pack_import",
                 game_id=game.id,
                 details={"archive": str(archive_path), "warnings": warnings},
@@ -1027,7 +1028,7 @@ class TranslationEngine:
         with self.db.session() as session:
             removed = TranslationRepository(session).clear_cache()
         self.activity.record(
-            f"已清理 {removed} 条翻译缓存",
+            tr('services.translation.engine.cleared_0_translation_cache_entries', removed),
             kind="translation_cache",
             level="warning",
         )

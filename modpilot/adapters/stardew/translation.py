@@ -9,6 +9,7 @@ from ...core.errors import TranslationError
 from ...core.paths import atomic_write_text
 from ...core.text_tokens import validate_placeholders
 from ...domain.models import TranslationApplyResult, TranslationPlan, TranslationUnit
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -24,13 +25,13 @@ def _load_json(path: Path) -> dict[str, Any]:
     try:
         raw = path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as exc:
-        raise TranslationError(f"{path.name} 不是有效的 UTF-8 文件：{exc}") from exc
+        raise TranslationError(tr('adapters.stardew.translation.0_is_not_a_valid_utf_8_file_1', path.name, exc)) from exc
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise TranslationError(f"{path.name} JSON 语法错误：{exc}") from exc
+        raise TranslationError(tr('adapters.stardew.translation.0_json_syntax_error_1', path.name, exc)) from exc
     if not isinstance(data, dict):
-        raise TranslationError(f"{path.name} 的顶层必须是 JSON 对象。")
+        raise TranslationError(tr('adapters.stardew.translation.the_top_level_of_0_must_be_a_json_object', path.name))
     return data
 
 
@@ -70,7 +71,7 @@ def build_plan(mod_dir: Path, language: str = "zh") -> TranslationPlan | None:
                 if isinstance(value, str)
             }
         except TranslationError as exc:
-            log.warning("已有译文无法读取，将先备份再覆盖：%s", exc)
+            log.warning(tr('adapters.stardew.translation.the_existing_translation_cannot_be_read_it_will_be_b_8d0c51'), exc)
     return TranslationPlan(
         source_file=source,
         target_file=target,
@@ -89,15 +90,15 @@ def validate(plan: TranslationPlan, translations: dict[str, str]) -> list[str]:
     valid_keys = {unit.key for unit in plan.units}
     unknown = sorted(set(translations) - valid_keys)
     if unknown:
-        errors.append("译文包含源文件中不存在的键：" + "、".join(unknown[:10]))
+        errors.append(tr('adapters.stardew.translation.translation_contains_keys_that_are_not_present_in_th_fb2149') + "、".join(unknown[:10]))
     if not translations:
-        errors.append("没有可写入的译文。")
+        errors.append(tr('adapters.stardew.translation.there_are_no_translations_to_write'))
     source_map = {unit.key: unit.source_text for unit in plan.units}
     for key, value in translations.items():
         if key not in source_map:
             continue
         if not isinstance(value, str):
-            errors.append(f"键 {key} 的译文不是字符串")
+            errors.append(tr('adapters.stardew.translation.translation_for_key_0_is_not_a_string', key))
             continue
         for message in validate_placeholders(source_map[key], value):
             errors.append(f"{key}: {message}")
@@ -112,11 +113,11 @@ def write(
 ) -> TranslationApplyResult:
     errors = validate(plan, translations)
     if errors:
-        raise TranslationError("译文结构校验失败：" + "；".join(errors[:8]))
+        raise TranslationError(tr('adapters.stardew.translation.translation_structure_validation_failed') + "；".join(errors[:8]))
     merged = dict(plan.existing_translations)
     merged.update({key: value for key, value in translations.items() if value.strip()})
     if not merged:
-        raise TranslationError("合并后的译文为空，已取消写入。")
+        raise TranslationError(tr('adapters.stardew.translation.the_merged_translation_is_empty_write_canceled'))
 
     # SMAPI i18n files are flat string maps. Keep unrelated existing keys intact
     # so a partial translation never destroys previously translated text.
@@ -129,7 +130,7 @@ def write(
         json.dumps(ordered, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    log.info("已写入 SMAPI 汉化文件：%s（%d 条）", plan.target_file, len(translations))
+    log.info(tr('adapters.stardew.translation.wrote_smapi_translation_file_s_d_entries'), plan.target_file, len(translations))
     return TranslationApplyResult(
         target_file=plan.target_file,
         translated_units=len(translations),

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from .models import Base
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class Database:
             current = connection.execute(text("PRAGMA user_version")).scalar_one()
             if current < SCHEMA_VERSION:
                 connection.execute(text(f"PRAGMA user_version = {SCHEMA_VERSION}"))
-        log.info("数据库已就绪：%s", self.db_path)
+        log.info(tr('data.db.database_ready_s'), self.db_path)
 
     @contextmanager
     def session(self) -> Generator[Session, None, None]:

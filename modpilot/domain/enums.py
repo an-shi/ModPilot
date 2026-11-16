@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from ..i18n import tr
+
 
 class UpdatePolicy(StrEnum):
     MANUAL = "manual"
@@ -13,14 +15,14 @@ class UpdatePolicy(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.MANUAL: "仅手动检查",
-            self.NOTIFY: "更新提醒",
-            self.CONFIRM_DOWNLOAD: "确认后下载",
-            self.AUTO_DOWNLOAD: "自动下载",
-            self.AUTO_INSTALL: "自动下载并安装",
-            self.IGNORE: "忽略更新",
-        }[self]
+        return tr({
+            self.MANUAL: 'domain.enums.manual_check_only',
+            self.NOTIFY: 'domain.enums.update_alerts',
+            self.CONFIRM_DOWNLOAD: 'domain.enums.download_after_confirmation',
+            self.AUTO_DOWNLOAD: 'domain.enums.auto_download',
+            self.AUTO_INSTALL: 'domain.enums.auto_download_and_install',
+            self.IGNORE: 'domain.enums.ignore_update',
+        }[self])
 
     @property
     def may_download(self) -> bool:
@@ -49,12 +51,12 @@ class ModKind(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.CODE: "代码 Mod",
-            self.CONTENT_PACK: "内容包",
-            self.FRAMEWORK: "框架/工具",
-            self.UNKNOWN: "未知",
-        }[self]
+        return tr({
+            self.CODE: 'domain.enums.code_mod',
+            self.CONTENT_PACK: 'domain.enums.content_pack',
+            self.FRAMEWORK: 'domain.enums.framework_tool',
+            self.UNKNOWN: 'domain.enums.unknown',
+        }[self])
 
 
 class BackupKind(StrEnum):
@@ -68,15 +70,15 @@ class BackupKind(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.INSTALL: "安装前备份",
-            self.UPDATE: "更新前备份",
-            self.UNINSTALL: "卸载前备份",
-            self.TRANSLATION: "汉化前备份",
-            self.REPAIR: "修复前备份",
-            self.PROFILE: "配置档备份",
-            self.MANUAL: "手动备份",
-        }[self]
+        return tr({
+            self.INSTALL: 'domain.enums.backup_before_install',
+            self.UPDATE: 'domain.enums.back_up_before_update',
+            self.UNINSTALL: 'domain.enums.backup_before_uninstall',
+            self.TRANSLATION: 'domain.enums.backup_before_translation',
+            self.REPAIR: 'domain.enums.backup_before_repair',
+            self.PROFILE: 'domain.enums.profile_backup',
+            self.MANUAL: 'domain.enums.manual_backup',
+        }[self])
 
 
 class DownloadStatus(StrEnum):
@@ -89,14 +91,14 @@ class DownloadStatus(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.QUEUED: "排队中",
-            self.DOWNLOADING: "下载中",
-            self.PAUSED: "已暂停",
-            self.COMPLETED: "已完成",
-            self.FAILED: "失败",
-            self.CANCELLED: "已取消",
-        }[self]
+        return tr({
+            self.QUEUED: 'domain.enums.queued',
+            self.DOWNLOADING: 'domain.enums.downloading',
+            self.PAUSED: 'domain.enums.paused',
+            self.COMPLETED: 'domain.enums.completed',
+            self.FAILED: 'domain.enums.failed',
+            self.CANCELLED: 'domain.enums.cancelled',
+        }[self])
 
 
 class DownloadKind(StrEnum):
@@ -113,12 +115,12 @@ class TranslationStatus(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.PENDING: "待翻译",
-            self.TRANSLATED: "已翻译",
-            self.CONFIRMED: "已确认",
-            self.FAILED: "失败",
-        }[self]
+        return tr({
+            self.PENDING: 'domain.enums.pending_translation',
+            self.TRANSLATED: 'domain.enums.translated',
+            self.CONFIRMED: 'domain.enums.confirmed',
+            self.FAILED: 'domain.enums.failed',
+        }[self])
 
 
 class TranslationOrigin(StrEnum):
@@ -130,13 +132,13 @@ class TranslationOrigin(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.AI: "AI 翻译",
-            self.CACHE: "本地缓存",
-            self.HUMAN: "人工翻译",
-            self.EXISTING: "已有汉化",
+        return tr({
+            self.AI: 'domain.enums.ai_translation',
+            self.CACHE: 'domain.enums.local_cache',
+            self.HUMAN: 'domain.enums.manual_translation',
+            self.EXISTING: 'domain.enums.existing_translation',
             self.NONE: "—",
-        }[self]
+        }[self])
 
 
 class LogSeverity(StrEnum):
@@ -147,12 +149,12 @@ class LogSeverity(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.INFO: "提示",
-            self.WARNING: "警告",
-            self.ERROR: "错误",
-            self.CRITICAL: "严重错误",
-        }[self]
+        return tr({
+            self.INFO: 'domain.enums.tip',
+            self.WARNING: 'domain.enums.warning',
+            self.ERROR: 'domain.enums.error',
+            self.CRITICAL: 'domain.enums.critical',
+        }[self])
 
     @property
     def rank(self) -> int:
@@ -167,12 +169,12 @@ class Certainty(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.CONFIRMED: "确定性证据",
-            self.KNOWN: "已知问题",
-            self.SUSPECTED: "疑似问题",
-            self.UNKNOWN: "无法确定",
-        }[self]
+        return tr({
+            self.CONFIRMED: 'domain.enums.definitive_evidence',
+            self.KNOWN: 'domain.enums.known_issue',
+            self.SUSPECTED: 'domain.enums.possible_issue',
+            self.UNKNOWN: 'domain.enums.uncertain',
+        }[self])
 
 
 class IssueCategory(StrEnum):
@@ -188,17 +190,17 @@ class IssueCategory(StrEnum):
 
     @property
     def label(self) -> str:
-        return {
-            self.MISSING_DEPENDENCY: "缺失依赖",
-            self.VERSION_MISMATCH: "版本不兼容",
-            self.DUPLICATE: "重复安装",
-            self.LOG_ERROR: "日志错误",
-            self.ENVIRONMENT: "游戏环境",
-            self.COMPATIBILITY: "兼容性",
-            self.FILE_CONFLICT: "文件冲突",
-            self.CONFIG: "配置问题",
-            self.OTHER: "其他",
-        }[self]
+        return tr({
+            self.MISSING_DEPENDENCY: 'domain.enums.missing_dependencies',
+            self.VERSION_MISMATCH: 'domain.enums.incompatible_version',
+            self.DUPLICATE: 'domain.enums.duplicate_installation',
+            self.LOG_ERROR: 'domain.enums.log_error',
+            self.ENVIRONMENT: 'domain.enums.game_environment',
+            self.COMPATIBILITY: 'domain.enums.compatibility',
+            self.FILE_CONFLICT: 'domain.enums.file_conflict',
+            self.CONFIG: 'domain.enums.configuration_issue',
+            self.OTHER: 'domain.enums.other',
+        }[self])
 
 
 class DiagnosticSource(StrEnum):
@@ -221,4 +223,4 @@ class RiskLevel(StrEnum):
 
     @property
     def label(self) -> str:
-        return {self.LOW: "低风险", self.MEDIUM: "中风险", self.HIGH: "高风险"}[self]
+        return tr({self.LOW: 'domain.enums.low_risk', self.MEDIUM: 'domain.enums.medium_risk', self.HIGH: 'domain.enums.high_risk'}[self])

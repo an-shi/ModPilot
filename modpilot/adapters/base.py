@@ -20,6 +20,7 @@ from ..domain.models import (
     TranslationApplyResult,
     TranslationPlan,
 )
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -40,17 +41,21 @@ class AdapterCapabilities:
 
     def labels(self) -> list[str]:
         mapping = {
-            "scan": "Mod 扫描",
-            "install": "安装/卸载",
-            "enable_disable": "启用/禁用",
-            "dependencies": "依赖解析",
-            "log_parsing": "日志解析",
-            "environment_check": "环境检查",
-            "translation": "AI 汉化",
-            "conflict_rules": "冲突规则",
-            "game_version": "版本识别",
+            "scan": "adapters.base.mod_scan",
+            "install": "adapters.base.install_uninstall",
+            "enable_disable": "adapters.base.enable_disable",
+            "dependencies": "adapters.base.dependency_resolution",
+            "log_parsing": "adapters.base.log_parsing",
+            "environment_check": "adapters.base.environment_check",
+            "translation": "adapters.base.ai_translation",
+            "conflict_rules": "adapters.base.conflict_rules",
+            "game_version": "adapters.base.version_detection",
         }
-        return [label for key, label in mapping.items() if getattr(self, key)]
+        return [
+            tr(message)
+            for attribute, message in mapping.items()
+            if getattr(self, attribute)
+        ]
 
 
 class GameAdapter(ABC):
@@ -62,11 +67,21 @@ class GameAdapter(ABC):
     """
 
     key: str = ""
+    # These are message IDs. Use :attr:`display_name` and
+    # :attr:`display_description` for text shown to the user.
     name: str = ""
     description: str = ""
     nexus_domain: str = ""
     steam_app_id: str | None = None
     capabilities: AdapterCapabilities = AdapterCapabilities()
+
+    @property
+    def display_name(self) -> str:
+        return tr(self.name) if self.name else self.key
+
+    @property
+    def display_description(self) -> str:
+        return tr(self.description) if self.description else ""
 
     @abstractmethod
     def detect_installations(self) -> list[GameInstallation]:
@@ -111,7 +126,12 @@ class GameAdapter(ABC):
         return []
 
     def parse_log(self, log_path: Path) -> ParsedLog:
-        raise NotImplementedError(f"{self.name} 适配器尚未实现日志解析。")
+        raise NotImplementedError(
+            tr(
+                'adapters.base.the_0_adapter_does_not_implement_log_parsing_yet',
+                self.display_name,
+            )
+        )
 
     def get_game_version(self, install_path: Path) -> str | None:
         return None
@@ -143,7 +163,12 @@ class GameAdapter(ABC):
         plan: TranslationPlan,
         translations: dict[str, str],
     ) -> TranslationApplyResult:
-        raise NotImplementedError(f"{self.name} 适配器尚未实现汉化写入。")
+        raise NotImplementedError(
+            tr(
+                'adapters.base.the_0_adapter_does_not_implement_writing_chinese_loc_ef430d',
+                self.display_name,
+            )
+        )
 
     def load_known_issue_rules(self) -> list[dict[str, Any]]:
         return []
@@ -151,8 +176,8 @@ class GameAdapter(ABC):
     def info(self) -> AdapterInfo:
         return AdapterInfo(
             key=self.key,
-            name=self.name,
-            description=self.description,
+            name=self.display_name,
+            description=self.display_description,
             nexus_domain=self.nexus_domain,
             capabilities=self.capabilities.labels(),
         )
@@ -184,16 +209,16 @@ class AdapterRegistry:
 
     def register(self, adapter: GameAdapter) -> None:
         if not adapter.key:
-            raise ValueError("适配器必须声明 key")
+            raise ValueError(tr('adapters.base.adapter_must_declare_a_key'))
         if adapter.key in self._adapters:
-            raise ValueError(f"适配器重复注册：{adapter.key}")
+            raise ValueError(tr('adapters.base.duplicate_adapter_registration_0', adapter.key))
         self._adapters[adapter.key] = adapter
 
     def get(self, key: str) -> GameAdapter:
         try:
             return self._adapters[key]
         except KeyError as exc:
-            raise KeyError(f"未知的游戏适配器：{key}") from exc
+            raise KeyError(tr('adapters.base.unknown_game_adapter_0', key)) from exc
 
     def try_get(self, key: str) -> GameAdapter | None:
         return self._adapters.get(key)

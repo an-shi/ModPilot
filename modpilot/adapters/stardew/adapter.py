@@ -24,6 +24,7 @@ from . import translation as stardew_translation
 from .log_parser import SmapiLogParser, find_smapi_logs
 from .manifest import ManifestError, parse_manifest
 from .paths import candidate_installations, framework_version, game_version
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -33,8 +34,11 @@ _SKIP_DIRS = {".git", ".vs", ".idea", "__pycache__", "node_modules"}
 
 class StardewValleyAdapter(GameAdapter):
     key = "stardew_valley"
-    name = "星露谷物语"
-    description = "SMAPI Mod 生态，支持 manifest 解析、i18n 汉化与 SMAPI 日志诊断。"
+    name = "adapters.stardew.adapter.stardew_valley"
+    description = (
+        "adapters.stardew.adapter."
+        "smapi_mod_ecosystem_with_manifest_parsing_i18n_local_06a26c"
+    )
     nexus_domain = "stardewvalley"
     steam_app_id = "413150"
     capabilities = AdapterCapabilities(
@@ -78,26 +82,26 @@ class StardewValleyAdapter(GameAdapter):
         if not install_path.is_dir():
             return GameValidation(
                 valid=False,
-                message="目录不存在。",
+                message=tr('adapters.stardew.adapter.directory_does_not_exist'),
                 install_path=install_path,
             )
         exe = self._locate_executable(install_path)
         if exe is None:
             return GameValidation(
                 valid=False,
-                message="未找到 Stardew Valley.exe，请选择游戏安装根目录。",
+                message=tr('adapters.stardew.adapter.stardew_valley_exe_not_found_please_select_the_game_a5bffc'),
                 install_path=install_path,
             )
         if not (install_path / "Content").is_dir():
             return GameValidation(
                 valid=False,
-                message="未找到 Content 目录，这不像是完整的游戏安装目录。",
+                message=tr('adapters.stardew.adapter.content_directory_not_found_this_does_not_look_like_e1b837'),
                 install_path=install_path,
             )
         mods_path = self.resolve_mods_dir(install_path)
         return GameValidation(
             valid=True,
-            message="已识别 Stardew Valley 游戏目录。",
+            message=tr('adapters.stardew.adapter.stardew_valley_game_directory_detected'),
             install_path=install_path,
             mods_path=mods_path,
             game_version=self.get_game_version(install_path),
@@ -180,13 +184,13 @@ class StardewValleyAdapter(GameAdapter):
                 discovered.append(fallback)
             visited += 1
             if progress and visited % 5 == 0:
-                progress(min(90, 10 + visited * 2), f"已发现 {len(discovered)} 个 Mod…")
+                progress(min(90, 10 + visited * 2), tr('adapters.stardew.adapter.found_0_mods', len(discovered)))
             # Do not prune subdirectories: SMAPI can load nested manifests and we
             # want to expose broken/nested mods rather than silently hide them.
 
         discovered.sort(key=lambda item: item.metadata.name.casefold())
         if progress:
-            progress(100, f"扫描完成，共发现 {len(discovered)} 个 Mod。")
+            progress(100, tr('adapters.stardew.adapter.scan_complete_found_0_mods_in_total', len(discovered)))
         return discovered
 
     @staticmethod
@@ -254,7 +258,7 @@ class StardewValleyAdapter(GameAdapter):
             )
             warnings: list[str] = []
             if destination.exists():
-                warnings.append("目标文件夹已存在，安装前会自动备份并替换。")
+                warnings.append(tr('adapters.stardew.adapter.the_target_folder_already_exists_it_will_be_backed_u_4c47bf'))
             plan.entries.append(
                 InstallEntry(
                     source_dir=directory,
@@ -267,7 +271,7 @@ class StardewValleyAdapter(GameAdapter):
 
         if not plan.entries:
             raise ValueError(
-                "压缩包中没有找到有效的 SMAPI manifest.json，无法作为星露谷物语 Mod 安装。"
+                tr('adapters.stardew.adapter.no_valid_smapi_manifest_json_was_found_in_the_archiv_5cce71')
             )
         return plan
 
@@ -275,20 +279,20 @@ class StardewValleyAdapter(GameAdapter):
         root = Path(mods_root).resolve()
         current = (root / relative_path).resolve()
         if not current.is_dir():
-            raise FileNotFoundError(f"Mod 文件夹不存在：{relative_path}")
+            raise FileNotFoundError(tr('adapters.stardew.adapter.mod_folder_does_not_exist_0', relative_path))
         try:
             rel = current.relative_to(root)
         except ValueError as exc:
-            raise ValueError("Mod 路径不在 Mods 目录中。") from exc
+            raise ValueError(tr('adapters.stardew.adapter.mod_path_is_not_inside_the_mods_directory')) from exc
         parts = list(rel.parts)
         if not parts:
-            raise ValueError("不能对 Mods 根目录执行启用/禁用。")
+            raise ValueError(tr('adapters.stardew.adapter.enable_disable_cannot_be_applied_to_the_mods_root_fo_0e41cd'))
         leaf = parts[-1]
         parent_disabled = any(part.startswith(".") for part in parts[:-1])
         is_disabled = leaf.startswith(".")
 
         if enabled and parent_disabled:
-            raise ValueError("该 Mod 位于已禁用的父文件夹中，请先启用父文件夹。")
+            raise ValueError(tr('adapters.stardew.adapter.this_mod_is_inside_a_disabled_parent_folder_enable_t_d478df'))
         if enabled and not is_disabled:
             return rel.as_posix()
         if not enabled and is_disabled:
@@ -296,13 +300,13 @@ class StardewValleyAdapter(GameAdapter):
 
         new_leaf = leaf[1:] if enabled else f".{leaf}"
         if not new_leaf:
-            raise ValueError("无法生成有效的文件夹名称。")
+            raise ValueError(tr('adapters.stardew.adapter.failed_to_generate_a_valid_folder_name'))
         target = current.with_name(new_leaf)
         if target.exists():
-            raise FileExistsError(f"无法重命名：目标已存在 {target.name}")
+            raise FileExistsError(tr('adapters.stardew.adapter.cannot_rename_target_already_exists_0', target.name))
         os.replace(current, target)
         new_rel = target.relative_to(root).as_posix()
-        log.info("切换 Mod 状态：%s -> %s", rel.as_posix(), new_rel)
+        log.info(tr('adapters.stardew.adapter.toggle_mod_status_s_s'), rel.as_posix(), new_rel)
         return new_rel
 
     def check_environment(self, install_path: Path) -> list[EnvironmentCheck]:
@@ -312,9 +316,9 @@ class StardewValleyAdapter(GameAdapter):
         checks.append(
             EnvironmentCheck(
                 key="game_executable",
-                label="游戏主程序",
+                label=tr('adapters.stardew.adapter.game_executable'),
                 ok=exe is not None,
-                detail=str(exe) if exe else "未找到 Stardew Valley.exe",
+                detail=str(exe) if exe else tr('adapters.stardew.adapter.stardew_valley_exe_not_found'),
                 severity=LogSeverity.CRITICAL,
             )
         )
@@ -322,9 +326,9 @@ class StardewValleyAdapter(GameAdapter):
         checks.append(
             EnvironmentCheck(
                 key="content",
-                label="游戏资源目录",
+                label=tr('adapters.stardew.adapter.game_assets_directory'),
                 ok=content.is_dir(),
-                detail=str(content) if content.is_dir() else "未找到 Content 目录",
+                detail=str(content) if content.is_dir() else tr('adapters.stardew.adapter.content_directory_not_found'),
                 severity=LogSeverity.CRITICAL,
             )
         )
@@ -332,9 +336,9 @@ class StardewValleyAdapter(GameAdapter):
         checks.append(
             EnvironmentCheck(
                 key="mods_dir",
-                label="Mods 目录",
+                label=tr('adapters.stardew.adapter.mods_directory'),
                 ok=mods.is_dir(),
-                detail=str(mods) if mods.is_dir() else "尚未创建，安装第一个 Mod 时会自动创建。",
+                detail=str(mods) if mods.is_dir() else tr('adapters.stardew.adapter.not_created_yet_it_will_be_created_automatically_whe_2b833e'),
                 severity=LogSeverity.WARNING,
             )
         )
@@ -346,28 +350,28 @@ class StardewValleyAdapter(GameAdapter):
                 label="SMAPI",
                 ok=smapi_exe.is_file(),
                 detail=(
-                    (f"SMAPI {smapi} 已安装。" if smapi else "SMAPI 已安装（无法读取版本号）。")
+                    (tr('adapters.stardew.adapter.smapi_0_is_installed', smapi) if smapi else tr('adapters.stardew.adapter.smapi_is_installed_version_could_not_be_read'))
                     if smapi_exe.is_file()
-                    else "未检测到 StardewModdingAPI.exe。请先安装 SMAPI，否则 Mod 不会加载。"
+                    else tr('adapters.stardew.adapter.stardewmoddingapi_exe_was_not_detected_install_smapi_d63f78')
                 ),
                 severity=LogSeverity.WARNING,
             )
         )
         writable = False
-        detail = "Mods 目录尚未创建。"
+        detail = tr('adapters.stardew.adapter.mods_directory_has_not_been_created_yet')
         if mods.is_dir():
             probe = mods / ".modpilot-write-test"
             try:
                 probe.write_text("test", encoding="utf-8")
                 probe.unlink()
                 writable = True
-                detail = "Mods 目录可写。"
+                detail = tr('adapters.stardew.adapter.mods_directory_is_writable')
             except OSError as exc:
-                detail = f"Mods 目录不可写：{exc}"
+                detail = tr('adapters.stardew.adapter.mods_directory_is_not_writable_0', exc)
         checks.append(
             EnvironmentCheck(
                 key="mods_writable",
-                label="Mods 写入权限",
+                label=tr('adapters.stardew.adapter.mods_write_permission'),
                 ok=writable,
                 detail=detail,
                 severity=LogSeverity.ERROR if mods.is_dir() else LogSeverity.WARNING,
@@ -415,5 +419,5 @@ class StardewValleyAdapter(GameAdapter):
             rules = data.get("rules", [])
             return [rule for rule in rules if isinstance(rule, dict)] if isinstance(rules, list) else []
         except (OSError, json.JSONDecodeError) as exc:
-            log.warning("读取已知问题规则失败：%s", exc)
+            log.warning(tr('adapters.stardew.adapter.failed_to_read_known_issue_rules_s'), exc)
             return []

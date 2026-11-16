@@ -8,6 +8,7 @@ from typing import Any
 
 from ...domain.enums import ModKind
 from ...domain.models import ModDependencyInfo, ModMetadata
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -89,25 +90,25 @@ def parse_manifest(manifest_path: Path) -> ModMetadata:
     try:
         raw_text = manifest_path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as exc:
-        raise ManifestError(f"manifest.json 不是有效的 UTF-8 文件：{exc}") from exc
+        raise ManifestError(tr('adapters.stardew.manifest.manifest_json_is_not_a_valid_utf_8_file_0', exc)) from exc
     except OSError as exc:
-        raise ManifestError(f"无法读取 manifest.json：{exc}") from exc
+        raise ManifestError(tr('adapters.stardew.manifest.failed_to_read_manifest_json_0', exc)) from exc
 
     try:
         data = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        raise ManifestError(f"manifest.json JSON 语法错误（第 {exc.lineno} 行）：{exc.msg}") from exc
+        raise ManifestError(tr('adapters.stardew.manifest.manifest_json_json_syntax_error_line_0_1', exc.lineno, exc.msg)) from exc
     if not isinstance(data, dict):
-        raise ManifestError("manifest.json 的顶层必须是对象。")
+        raise ManifestError(tr('adapters.stardew.manifest.the_top_level_of_manifest_json_must_be_an_object'))
 
     unique_id = _string(_ci_get(data, "UniqueID", "UniqueId"))
     name = _string(_ci_get(data, "Name"))
     if not unique_id:
-        raise ManifestError("manifest.json 缺少 UniqueID。")
+        raise ManifestError(tr('adapters.stardew.manifest.manifest_json_is_missing_uniqueid'))
     if not name:
-        raise ManifestError("manifest.json 缺少 Name。")
+        raise ManifestError(tr('adapters.stardew.manifest.manifest_json_is_missing_name'))
     if not re.match(r"^[A-Za-z0-9_.\-]+$", unique_id):
-        raise ManifestError(f"UniqueID 包含 SMAPI 不允许的字符：{unique_id}")
+        raise ManifestError(tr('adapters.stardew.manifest.uniqueid_contains_characters_that_smapi_does_not_all_44f6dc', unique_id))
 
     version = _string(_ci_get(data, "Version"), "0.0.0") or "0.0.0"
     author = _string(_ci_get(data, "Author"))

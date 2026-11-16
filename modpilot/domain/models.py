@@ -68,7 +68,7 @@ class GameInstallation(DomainModel):
     adapter_key: str
     path: Path
     display_name: str
-    source: str = "自动检测"
+    source: str = "auto"
     valid: bool = True
     message: str = ""
     game_version: str | None = None

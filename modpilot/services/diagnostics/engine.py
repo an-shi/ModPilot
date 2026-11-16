@@ -25,6 +25,7 @@ from ..activity import ActivityService
 from ..mod_service import ModService
 from ..translation.llm import LlmClient
 from .rules import StaticRules
+from ...i18n import current_language, tr
 
 log = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class DiagnosticEngine:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.diagnostics.engine.no_game_has_been_added'))
             adapter = self.registry.get(game.adapter_key)
             return adapter.find_logs(Path(game.install_path))
 
@@ -73,36 +74,36 @@ class DiagnosticEngine:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.diagnostics.engine.no_game_has_been_added'))
             adapter = self.registry.get(game.adapter_key)
             install_path = Path(game.install_path)
             game_name = game.name
             framework_version = game.framework_version
 
         if progress:
-            progress(5, "正在选择日志…")
+            progress(5, tr('services.diagnostics.engine.selecting_log'))
         if log_path is None:
             log_path = self.default_log_path(game_id)
         parsed: ParsedLog | None = None
         if log_path:
             path = Path(log_path)
             if not path.is_file():
-                raise ValueError(f"日志文件不存在：{path}")
+                raise ValueError(tr('services.diagnostics.engine.log_file_does_not_exist_0', path))
             if progress:
-                progress(15, "正在解析 SMAPI 日志…")
+                progress(15, tr('services.diagnostics.engine.parsing_smapi_log'))
             try:
                 parsed = adapter.parse_log(path)
                 framework_version = parsed.framework_version or framework_version
             except Exception as exc:
-                log.warning("解析日志失败：%s", exc)
+                log.warning(tr('services.diagnostics.engine.failed_to_parse_log_s'), exc)
                 parsed = ParsedLog(
                     path=path,
                     log_type="unknown",
-                    parse_warnings=[f"日志解析失败：{exc}"],
+                    parse_warnings=[tr('services.diagnostics.engine.failed_to_parse_log_0', exc)],
                 )
 
         if progress:
-            progress(35, "正在执行静态规则分析…")
+            progress(35, tr('services.diagnostics.engine.running_static_rule_analysis'))
         views = self.mods.list_mods(game_id)
         environment = adapter.check_environment(install_path)
         findings: list[DiagnosticFinding] = []
@@ -119,16 +120,13 @@ class DiagnosticEngine:
         else:
             findings.append(
                 DiagnosticFinding(
-                    title="未找到 SMAPI 日志",
-                    description=(
-                        "没有找到 SMAPI-latest.txt 或 ErrorLogs 日志。"
-                        "请通过 SMAPI 启动一次游戏，或手动选择日志文件后再运行诊断。"
-                    ),
+                    title=tr('services.diagnostics.engine.smapi_log_not_found'),
+                    description=tr('services.diagnostics.engine.no_smapi_latest_txt_or_errorlogs_log_was_found_launc_4525af'),
                     severity=LogSeverity.WARNING,
                     certainty=Certainty.CONFIRMED,
                     category=IssueCategory.ENVIRONMENT,
-                    evidence=["未在 %APPDATA%\\StardewValley\\ErrorLogs 或游戏目录中找到日志"],
-                    recommendation="使用 SMAPI 启动游戏，然后重新运行诊断；也可以在顶部手动选择日志。",
+                    evidence=[tr('services.diagnostics.engine.no_logs_found_in_appdata_stardewvalley_errorlogs_or_de1802')],
+                    recommendation=tr('services.diagnostics.engine.launch_the_game_with_smapi_then_run_diagnostics_agai_83443e'),
                     confidence=0.9,
                     source=DiagnosticSource.RULE,
                     rule_id="log.missing",
@@ -140,7 +138,7 @@ class DiagnosticEngine:
         ai_used = False
         if use_ai:
             if progress:
-                progress(55, "正在请求 AI 深度分析…")
+                progress(55, tr('services.diagnostics.engine.requesting_ai_deep_analysis'))
             try:
                 ai_findings, _ai_summary = self._analyze_with_ai(
                     game_name=game_name,
@@ -159,13 +157,13 @@ class DiagnosticEngine:
                 # findings with verified evidence are persisted and shown.
             except LlmError as exc:
                 ai_error = str(exc)
-                log.warning("AI 诊断不可用：%s", exc)
+                log.warning(tr('services.diagnostics.engine.ai_diagnostics_unavailable_s'), exc)
             except Exception as exc:
-                ai_error = f"AI 诊断失败：{exc}"
-                log.exception("AI 诊断异常")
+                ai_error = tr('services.diagnostics.engine.ai_diagnostics_failed_0', exc)
+                log.exception(tr('services.diagnostics.engine.ai_diagnostics_error'))
 
         if progress:
-            progress(85, "正在生成诊断报告…")
+            progress(85, tr('services.diagnostics.engine.generating_diagnostic_report'))
         summary = self._build_summary(findings, parsed, ai_used, ai_error)
         with self.db.session() as session:
             repo = DiagnosticRepository(session)
@@ -206,12 +204,12 @@ class DiagnosticEngine:
                 )
             run_id = run.id
         if progress:
-            progress(100, "诊断完成。")
+            progress(100, tr('services.diagnostics.engine.diagnostics_complete'))
         error_count = sum(
             1 for finding in findings if finding.severity.rank >= LogSeverity.ERROR.rank
         )
         self.activity.record(
-            f"智能诊断完成：发现 {len(findings)} 个问题（{error_count} 个错误）",
+            tr('services.diagnostics.engine.smart_diagnostics_complete_found_0_issues_1_errors', len(findings), error_count),
             kind="diagnostic",
             game_id=game_id,
             details={"run_id": run_id, "ai_used": ai_used, "ai_error": ai_error},
@@ -229,19 +227,18 @@ class DiagnosticEngine:
         critical = sum(1 for f in findings if f.severity is LogSeverity.CRITICAL)
         confirmed = sum(1 for f in findings if f.certainty is Certainty.CONFIRMED)
         suspected = sum(1 for f in findings if f.certainty is Certainty.SUSPECTED)
-        parts = [f"共发现 {len(findings)} 个问题：{critical} 个严重、{errors} 个错误"]
-        parts.append(f"其中 {confirmed} 个有确定性证据，{suspected} 个为疑似问题")
+        parts = [tr('services.diagnostics.engine.found_0_issues_1_critical_2_errors', len(findings), critical, errors)]
+        parts.append(tr('services.diagnostics.engine.0_have_definitive_evidence_1_are_suspected_issues', confirmed, suspected))
         if parsed:
             parts.append(
-                f"已解析日志 {parsed.path.name}：{len(parsed.loaded_mods)} 个 Mod 加载，"
-                f"{len(parsed.skipped_mods)} 个跳过"
+                tr('services.diagnostics.engine.parsed_log_0_1_mods_loaded_2_skipped', parsed.path.name, len(parsed.loaded_mods), len(parsed.skipped_mods))
             )
         else:
-            parts.append("未解析 SMAPI 日志，仅执行了静态元数据检查")
+            parts.append(tr('services.diagnostics.engine.smapi_log_was_not_parsed_only_static_metadata_checks_79e42d'))
         if ai_used:
-            parts.append("AI 深度分析已启用，AI 结论仅作为参考")
+            parts.append(tr('services.diagnostics.engine.ai_deep_analysis_is_enabled_ai_conclusions_are_for_r_0057bf'))
         elif ai_error:
-            parts.append(f"AI 分析未完成：{ai_error}")
+            parts.append(tr('services.diagnostics.engine.ai_analysis_did_not_complete_0', ai_error))
         return "；".join(parts) + "。"
 
     def _analyze_with_ai(
@@ -256,7 +253,7 @@ class DiagnosticEngine:
         log_path: Path | None,
     ) -> tuple[list[DiagnosticFinding], str]:
         if not self.llm.is_configured():
-            raise LlmError("尚未配置 AI 模型或 API Key。")
+            raise LlmError(tr('services.diagnostics.engine.ai_model_or_api_key_is_not_configured'))
         context = self._build_ai_context(
             game_name=game_name,
             game_version=game_version,
@@ -266,13 +263,14 @@ class DiagnosticEngine:
             findings=findings,
             log_path=log_path,
         )
+        output_language = "English" if current_language() == "en-US" else "Simplified Chinese"
         system = (
             "You are a careful Stardew Valley SMAPI troubleshooting analyst. "
             "Analyze ONLY the supplied evidence. Never invent mods, versions, log lines, "
             "URLs, or error causes. Do not claim two mods conflict merely because they "
             "appear in the same log. Distinguish confirmed facts, known documented issues, "
             "suspected issues, and unknowns. Return one JSON object with keys: summary "
-            "(Chinese string) and findings (array). Each finding must have: title, "
+            f"(string in {output_language}) and findings (array). Each finding must have: title, "
             "description, severity (info|warning|error|critical), certainty "
             "(confirmed|known|suspected|unknown), category "
             "(missing_dependency|version_mismatch|duplicate|log_error|environment|"
@@ -280,7 +278,7 @@ class DiagnosticEngine:
             "UniqueIDs that appear in the provided install list), evidence (array of short "
             "quotes taken verbatim from the supplied evidence), recommendation, confidence "
             "(0 to 0.85). Return at most 8 findings. If evidence is insufficient, use "
-            "certainty unknown and explain what is needed. Use Simplified Chinese."
+            f"certainty unknown and explain what is needed. Use {output_language}."
         )
         messages = [
             {"role": "system", "content": system},
@@ -290,7 +288,7 @@ class DiagnosticEngine:
         summary = str(payload.get("summary") or "").strip()
         raw_findings = payload.get("findings")
         if not isinstance(raw_findings, list):
-            raise LlmError("AI 未返回 findings 数组。")
+            raise LlmError(tr('services.diagnostics.engine.ai_did_not_return_a_findings_array'))
         known_names = {view.name.casefold(): view for view in views}
         known_ids = {view.unique_id.casefold(): view for view in views}
         normalized_context = self._normalize(context)
@@ -339,12 +337,12 @@ class DiagnosticEngine:
                 combined = (title + " " + description).casefold()
                 claims_conflict = any(
                     word in combined
-                    for word in ("conflict", "冲突", "不兼容", "incompatible")
+                    for word in ("conflict", tr('services.diagnostics.engine.conflict'), tr('services.diagnostics.engine.incompatible'), "incompatible")
                 )
                 context_lower = normalized_context.casefold()
                 explicit = any(
                     word in context_lower
-                    for word in ("conflict", "冲突", "incompatible", "not compatible")
+                    for word in ("conflict", tr('services.diagnostics.engine.conflict'), "incompatible", "not compatible")
                 )
                 if claims_conflict and not explicit:
                     certainty = Certainty.SUSPECTED
@@ -370,10 +368,10 @@ class DiagnosticEngine:
                 )
             )
         if dropped:
-            log.info("AI 诊断中有 %d 条缺少可验证证据，已过滤。", dropped)
+            log.info(tr('services.diagnostics.engine.d_ai_diagnostic_entries_lacked_verifiable_evidence_a_306dac'), dropped)
         if not ai_findings:
             raise LlmError(
-                "AI 返回的分析缺少可验证证据，已全部过滤。请检查日志是否完整，或稍后重试。"
+                tr('services.diagnostics.engine.all_ai_findings_were_filtered_out_because_they_lacke_1f46d2')
             )
         return ai_findings, summary[:3000]
 
@@ -419,7 +417,7 @@ class DiagnosticEngine:
                 continue
             deps = ", ".join(
                 f"{dep.unique_id}{'>=' + dep.minimum_version if dep.minimum_version else ''}"
-                f"{'' if dep.satisfied else '(缺失)'}"
+                f"{'' if dep.satisfied else tr('services.diagnostics.engine.missing')}"
                 for dep in view.dependencies
             )
             install_lines.append(
@@ -441,7 +439,7 @@ class DiagnosticEngine:
             limit = min(MAX_AI_LOG_CHARS, self.config.config.diagnostics_max_log_chars)
             if len(raw) > limit:
                 keep = max(2000, limit // 3)
-                raw = raw[:keep] + "\n... [中间日志已省略] ...\n" + raw[-keep:]
+                raw = raw[:keep] + tr('services.diagnostics.engine.intermediate_log_omitted') + raw[-keep:]
             log_excerpt = raw
         skipped_lines = ""
         if parsed:
@@ -476,7 +474,7 @@ class DiagnosticEngine:
             repo = DiagnosticRepository(session)
             run = repo.get_run(run_id)
             if run is None:
-                raise KeyError("诊断记录不存在。")
+                raise KeyError(tr('services.diagnostics.engine.diagnostic_record_does_not_exist'))
             issues = repo.issues(run_id)
             findings: list[DiagnosticFinding] = []
             for issue in issues:
@@ -547,7 +545,7 @@ class DiagnosticEngine:
         try:
             raw = path.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
-            return f"无法读取日志：{exc}"
+            return tr('services.diagnostics.engine.failed_to_read_log_0', exc)
         if len(raw) > max_chars:
-            return raw[: max_chars // 3] + "\n... [日志过长，中间部分已省略] ...\n" + raw[-max_chars * 2 // 3 :]
+            return raw[: max_chars // 3] + tr('services.diagnostics.engine.log_too_long_middle_section_omitted') + raw[-max_chars * 2 // 3 :]
         return raw

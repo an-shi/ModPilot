@@ -12,6 +12,7 @@ from ..data.repositories import BackupRepository, GameRepository
 from ..domain.enums import BackupKind
 from ..domain.models import BackupView
 from .activity import ActivityService
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class BackupService:
             )
             backup_id = row.id
         self.activity.record(
-            f"已创建备份：{label}",
+            tr('services.backup_service.created_backup_0', label),
             kind="backup",
             game_id=game_id,
             details={"backup_id": backup_id, "path": str(info.path)},
@@ -72,7 +73,7 @@ class BackupService:
         with self.db.session() as session:
             row = BackupRepository(session).get(backup_id)
             if row is None:
-                raise BackupError("备份记录不存在。")
+                raise BackupError(tr('services.backup_service.the_backup_record_does_not_exist'))
             return self._to_view(row)
 
     def list_for_game(self, game_id: int, mod_id: int | None = None) -> list[BackupView]:
@@ -84,28 +85,28 @@ class BackupService:
         with self.db.session() as session:
             row = BackupRepository(session).get(backup_id)
             if row is None:
-                raise BackupError("备份记录不存在。")
+                raise BackupError(tr('services.backup_service.the_backup_record_does_not_exist'))
             game = GameRepository(session).get(row.game_id)
             if game is None:
-                raise BackupError("备份关联的游戏已不存在。")
+                raise BackupError(tr('services.backup_service.the_game_associated_with_this_backup_no_longer_exist_4fd94b'))
             archive_path = Path(row.path)
             manifest = self.manager.read_manifest(archive_path)
             restore_root_raw = (row.metadata_json or {}).get("restore_root") or manifest.get("root")
             if not restore_root_raw:
-                raise BackupError("备份缺少恢复目录信息。")
+                raise BackupError(tr('services.backup_service.the_backup_is_missing_restore_directory_information'))
             restore_root = Path(str(restore_root_raw)).resolve()
             install_root = Path(game.install_path).resolve()
             try:
                 restore_root.relative_to(install_root)
             except ValueError as exc:
-                raise BackupError("备份的恢复目录不在游戏目录内，已拒绝恢复。") from exc
+                raise BackupError(tr('services.backup_service.the_backup_s_restore_directory_is_not_inside_the_gam_23a6e6')) from exc
             if not archive_path.is_file():
-                raise BackupError("备份文件已丢失。")
+                raise BackupError(tr('services.backup_service.the_backup_file_is_missing'))
             if row.sha256:
                 actual = self.manager.file_sha256(archive_path)
                 if actual.lower() != row.sha256.lower():
                     raise BackupError(
-                        "备份文件完整性校验失败：文件可能已损坏或被修改，已拒绝恢复。"
+                        tr('services.backup_service.backup_file_integrity_check_failed_the_file_may_be_c_f48263')
                     )
 
             # Safety net for the restore operation itself.
@@ -115,7 +116,7 @@ class BackupService:
                 try:
                     candidate.relative_to(install_root)
                 except ValueError as exc:
-                    raise BackupError("备份清单包含游戏目录之外的路径。") from exc
+                    raise BackupError(tr('services.backup_service.the_backup_manifest_contains_paths_outside_the_game_c59906')) from exc
                 if candidate.exists():
                     existing_items.append(candidate)
             safety_id: int | None = None
@@ -124,16 +125,16 @@ class BackupService:
                     restore_root,
                     existing_items,
                     kind=BackupKind.MANUAL.value,
-                    label=f"恢复前自动备份 #{backup_id}",
-                    note="恢复操作前的安全备份",
+                    label=tr('services.backup_service.automatic_backup_before_restore_0', backup_id),
+                    note=tr('services.backup_service.safety_backup_before_restore'),
                     extra={"restore_root": str(restore_root), "safety_for": backup_id},
                 )
                 safety_row = BackupRepository(session).add(
                     game_id=row.game_id,
                     mod_id=row.mod_id,
                     kind=BackupKind.MANUAL.value,
-                    label=f"恢复前自动备份 #{backup_id}",
-                    note="恢复操作前的安全备份",
+                    label=tr('services.backup_service.automatic_backup_before_restore_0', backup_id),
+                    note=tr('services.backup_service.safety_backup_before_restore'),
                     path=str(safety.path),
                     size_bytes=safety.size_bytes,
                     sha256=safety.sha256,
@@ -151,7 +152,7 @@ class BackupService:
             session.flush()
             view = self._to_view(row)
         self.activity.record(
-            f"已恢复备份：{view.label}",
+            tr('services.backup_service.restored_backup_0', view.label),
             kind="backup_restore",
             level="warning",
             game_id=view.game_id,
@@ -163,12 +164,12 @@ class BackupService:
         with self.db.session() as session:
             row = BackupRepository(session).get(backup_id)
             if row is None:
-                raise BackupError("备份记录不存在。")
+                raise BackupError(tr('services.backup_service.the_backup_record_does_not_exist'))
             if delete_file:
                 try:
                     self.manager.delete(Path(row.path))
                 except OSError as exc:
-                    raise BackupError(f"删除备份文件失败：{exc}") from exc
+                    raise BackupError(tr('services.backup_service.failed_to_delete_backup_file_0', exc)) from exc
             session.delete(row)
 
     @staticmethod

@@ -25,6 +25,7 @@ from .models import (
     UpdateRecord,
     utcnow,
 )
+from ..i18n import tr
 
 
 class GameRepository:
@@ -276,7 +277,7 @@ class DownloadRepository:
             .where(Download.status.in_(["queued", "downloading"]))
             .values(
                 status="paused",
-                error="应用上次退出时下载被中断，可手动继续。",
+                error=tr('data.repositories.downloads_were_interrupted_when_the_app_last_exited_23203e'),
                 updated_at=utcnow(),
             )
         )

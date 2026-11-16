@@ -34,6 +34,7 @@ from ..domain.models import (
 )
 from .activity import ActivityService
 from .backup_service import BackupService
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class ModService:
         with self.db.session() as session:
             game = GameRepository(session).get(game_id)
             if game is None:
-                raise KeyError("游戏未添加。")
+                raise KeyError(tr('services.mod_service.no_game_has_been_added'))
             adapter = self.registry.get(game.adapter_key)
             return game, adapter
 
@@ -81,7 +82,7 @@ class ModService:
                 raise AdapterError(str(exc)) from exc
             self._annotate_plan(game_id, plan)
             if not plan.entries:
-                raise ArchiveError("压缩包中未识别到可安装的 Mod。")
+                raise ArchiveError(tr('services.mod_service.no_installable_mods_were_recognized_in_the_archive'))
             return plan
         except Exception:
             shutil.rmtree(staging, ignore_errors=True)
@@ -112,11 +113,11 @@ class ModService:
                         }
                     )
                     entry.warnings.append(
-                        f"检测到已安装的相同 Mod（{existing.name} {existing.version}），将更新现有目录。"
+                        tr('services.mod_service.detected_the_same_mod_already_installed_0_1_the_exis_f0eed1', existing.name, existing.version)
                     )
                 else:
                     entry.warnings.append(
-                        f"检测到相同 UniqueID 的嵌套安装（{existing.relative_path}），可能产生重复。"
+                        tr('services.mod_service.detected_a_nested_installation_with_the_same_uniquei_845c69', existing.relative_path)
                     )
                 entry.duplicate_of = f"{existing.name} {existing.version} ({existing.relative_path})"
                 entry.existing_mod_id = existing.id
@@ -124,10 +125,10 @@ class ModService:
             destination = Path(plan.mods_root) / entry.destination_name
             entry.existing = destination.exists()
             if entry.existing:
-                entry.warnings.append("目标文件夹已存在，安装前会备份并替换。")
+                entry.warnings.append(tr('services.mod_service.the_target_folder_already_exists_it_will_be_backed_u_2cc142'))
 
             if entry.destination_name.casefold() in used_destinations:
-                entry.warnings.append("同一压缩包内有多个 Mod 使用相同目标文件夹，已自动改名。")
+                entry.warnings.append(tr('services.mod_service.multiple_mods_in_the_same_archive_used_the_same_targ_ef0b64'))
                 base = entry.destination_name
                 counter = 2
                 while f"{base} ({counter})".casefold() in used_destinations:
@@ -144,8 +145,8 @@ class ModService:
             for dependency in entry.metadata.dependencies:
                 if dependency.required and dependency.unique_id.casefold() not in available_ids:
                     entry.warnings.append(
-                        f"缺少依赖：{dependency.unique_id}"
-                        + (f"（最低版本 {dependency.minimum_version}）" if dependency.minimum_version else "")
+                        tr('services.mod_service.missing_dependency_0', dependency.unique_id)
+                        + (tr('services.mod_service.minimum_version_0', dependency.minimum_version) if dependency.minimum_version else "")
                     )
 
     def install_plan(
@@ -160,21 +161,21 @@ class ModService:
     ) -> InstallResult:
         staging = Path(plan.staging_dir).resolve()
         if not is_within(staging, self.paths.staging_dir):
-            raise ModOperationError("安装暂存目录不在 ModPilot 数据目录内，已拒绝执行。")
+            raise ModOperationError(tr('services.mod_service.the_install_staging_directory_is_not_inside_the_modp_886309'))
         game, _adapter = self._game_and_adapter(game_id)
         mods_root = Path(game.mods_path).resolve()
         if Path(plan.mods_root).resolve() != mods_root:
-            raise ModOperationError("安装计划中的 Mods 目录与当前游戏配置不一致。")
+            raise ModOperationError(tr('services.mod_service.the_mods_directory_in_the_install_plan_does_not_matc_4183a7'))
         mods_root.mkdir(parents=True, exist_ok=True)
 
         for entry in plan.entries:
             if entry.existing and not allow_replace:
                 raise ModOperationError(
-                    f"目标文件夹已存在：{entry.destination_name}。请确认替换后才能安装。"
+                    tr('services.mod_service.the_target_folder_already_exists_0_confirm_the_repla_1b1361', entry.destination_name)
                 )
             if entry.duplicate_of and not allow_duplicate:
                 raise ModOperationError(
-                    f"已安装相同 UniqueID：{entry.duplicate_of}。请确认是否仍要安装。"
+                    tr('services.mod_service.a_mod_with_the_same_uniqueid_is_already_installed_0_cced99', entry.duplicate_of)
                 )
 
         journal: list[tuple[Path, Path | None, int | None]] = []
@@ -183,11 +184,11 @@ class ModService:
         try:
             for index, entry in enumerate(plan.entries):
                 if progress:
-                    progress(int(index / total * 80), f"正在安装 {entry.metadata.name}…")
+                    progress(int(index / total * 80), tr('services.mod_service.installing_0', entry.metadata.name))
                 destination = (mods_root / entry.destination_name).resolve()
-                assert_within(destination, mods_root, label="安装目标")
+                assert_within(destination, mods_root, label=tr('services.mod_service.install_target'))
                 source_dir = Path(entry.source_dir).resolve()
-                assert_within(source_dir, staging, label="安装源")
+                assert_within(source_dir, staging, label=tr('services.mod_service.install_source'))
 
                 backup_id: int | None = None
                 if destination.exists():
@@ -196,8 +197,8 @@ class ModService:
                         root=mods_root,
                         items=[destination],
                         kind=BackupKind.UPDATE if entry.duplicate_of else BackupKind.INSTALL,
-                        label=f"{'更新' if entry.duplicate_of else '安装'} {entry.metadata.name}",
-                        note=f"安装 {entry.metadata.unique_id} {entry.metadata.version} 前自动备份",
+                        label=f"{tr('services.mod_service.update') if entry.duplicate_of else tr('services.mod_service.install')} {entry.metadata.name}",
+                        note=tr('services.mod_service.automatic_backup_before_installing_0_1', entry.metadata.unique_id, entry.metadata.version),
                         mod_id=entry.existing_mod_id,
                         extra={"destination": entry.destination_name},
                     )
@@ -220,7 +221,7 @@ class ModService:
                 journal.append((destination, old_dir, backup_id))
 
             if progress:
-                progress(85, "正在扫描已安装 Mod…")
+                progress(85, tr('services.mod_service.scanning_installed_mods'))
             self.scan_game(game_id, record_activity=False)
             with self.db.session() as session:
                 repo = ModRepository(session)
@@ -259,9 +260,9 @@ class ModService:
             for entry in plan.entries:
                 result.warnings.extend(entry.warnings)
             if progress:
-                progress(100, "安装完成。")
+                progress(100, tr('services.mod_service.installation_complete'))
         except Exception as exc:
-            log.exception("安装失败，正在回滚文件")
+            log.exception(tr('services.mod_service.installation_failed_rolling_back_files'))
             for destination, old_dir, _backup_id in reversed(journal):
                 try:
                     if destination.exists():
@@ -269,7 +270,7 @@ class ModService:
                     if old_dir and old_dir.exists():
                         os.replace(old_dir, destination)
                 except OSError:
-                    log.exception("回滚安装失败：%s", destination)
+                    log.exception(tr('services.mod_service.failed_to_roll_back_installation_s'), destination)
             with self.db.session() as session:
                 InstallRecordRepository(session).add(
                     game_id=game_id,
@@ -278,14 +279,14 @@ class ModService:
                     details_json={"error": str(exc), "warnings": result.warnings},
                 )
             raise ModOperationError(
-                f"安装失败，已尝试回滚：{exc}",
+                tr('services.mod_service.installation_failed_rollback_attempted_0', exc),
                 detail=str(exc),
             ) from exc
         finally:
             shutil.rmtree(staging, ignore_errors=True)
 
         self.activity.record(
-            f"已安装 {len(plan.entries)} 个 Mod："
+            tr('services.mod_service.installed_0_mods', len(plan.entries))
             + "、".join(entry.metadata.name for entry in plan.entries),
             kind="install",
             game_id=game_id,
@@ -339,7 +340,7 @@ class ModService:
         game, adapter = self._game_and_adapter(game_id)
         install_path = Path(game.install_path)
         if progress:
-            progress(5, "正在扫描 Mods 目录…")
+            progress(5, tr('services.mod_service.scanning_mods_folder'))
         scanned = adapter.scan_mods(install_path, progress)
         seen_ids: set[int] = set()
         created = 0
@@ -352,7 +353,7 @@ class ModService:
             for scanned_mod in scanned:
                 rel = scanned_mod.relative_path
                 if rel == ".":
-                    log.warning("忽略直接位于 Mods 根目录的 manifest.json：%s", scanned_mod.directory)
+                    log.warning(tr('services.mod_service.ignoring_manifest_json_located_directly_in_the_mods_f970dd'), scanned_mod.directory)
                     continue
                 mod = by_path.get(rel)
                 if mod is None:
@@ -454,10 +455,10 @@ class ModService:
             )
 
         if progress:
-            progress(100, f"扫描完成：新增 {created}，更新 {updated}。")
+            progress(100, tr('services.mod_service.scan_complete_0_added_1_updated', created, updated))
         if record_activity:
             self.activity.record(
-                f"扫描完成：识别 {len(scanned)} 个 Mod（新增 {created}，更新 {updated}）",
+                tr('services.mod_service.scan_complete_0_mods_detected_1_added_2_updated', len(scanned), created, updated),
                 kind="scan",
                 game_id=game_id,
                 details={"created": created, "updated": updated, "scanned": len(scanned)},
@@ -471,7 +472,7 @@ class ModService:
     def get_mod(self, mod_id: int) -> ModView:
         views = self._views_for_ids([mod_id])
         if not views:
-            raise KeyError("Mod 不存在。")
+            raise KeyError(tr('services.mod_service.mod_does_not_exist'))
         return views[0]
 
     def list_mods(self, game_id: int) -> list[ModView]:
@@ -611,19 +612,19 @@ class ModService:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             game = GameRepository(session).get(mod.game_id)
             if game is None:
-                raise ModOperationError("游戏记录不存在。")
+                raise ModOperationError(tr('services.mod_service.game_record_does_not_exist'))
             adapter = self.registry.get(game.adapter_key)
             if not mod.is_present:
-                raise ModOperationError("Mod 文件已不存在，请先重新扫描或卸载记录。")
+                raise ModOperationError(tr('services.mod_service.the_mod_file_no_longer_exists_please_rescan_or_unins_b721cb'))
             old_rel = mod.relative_path
             old_name = mod.name
             try:
                 new_rel = adapter.set_enabled(Path(game.mods_path), old_rel, enabled)
             except (OSError, ValueError) as exc:
-                raise ModOperationError(f"切换状态失败：{exc}") from exc
+                raise ModOperationError(tr('services.mod_service.failed_to_toggle_status_0', exc)) from exc
             new_prefix = new_rel
             old_prefix = old_rel
             affected = [mod]
@@ -648,7 +649,7 @@ class ModService:
                 details_json={"old_path": old_rel, "new_path": new_rel},
             )
         self.activity.record(
-            f"已{'启用' if enabled else '禁用'} {old_name}",
+            tr('services.mod_service.0_1', tr('services.mod_service.enable') if enabled else tr('services.mod_service.disable'), old_name),
             kind="enable" if enabled else "disable",
             game_id=game.id,
         )
@@ -669,7 +670,7 @@ class ModService:
             name = rows[mod_id].name if mod_id in rows else f"#{mod_id}"
             try:
                 if mod_id not in rows:
-                    result.failed.append((name, "Mod 记录不存在。"))
+                    result.failed.append((name, tr('services.mod_service.mod_record_does_not_exist')))
                     continue
                 current = rows[mod_id]
                 if not current.is_present:
@@ -688,12 +689,12 @@ class ModService:
         try:
             value = UpdatePolicy(policy)
         except ValueError as exc:
-            raise ValueError(f"未知更新策略：{policy}") from exc
+            raise ValueError(tr('services.mod_service.unknown_update_strategy_0', policy)) from exc
         with self.db.session() as session:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             repo.update(mod, update_policy=value.value)
 
     def set_pinned_version(self, mod_id: int, version: str | None) -> None:
@@ -701,7 +702,7 @@ class ModService:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             pinned = version.strip() if version else None
             repo.update(mod, pinned_version=pinned or None, update_status=mod.update_status)
 
@@ -710,7 +711,7 @@ class ModService:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             target = (version or mod.latest_version or "").strip() or None
             repo.update(
                 mod,
@@ -723,7 +724,7 @@ class ModService:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             repo.update(mod, ignored_version=None, update_status=UpdateStatus.UNKNOWN.value)
 
     def set_nexus_id(self, mod_id: int, nexus_mod_id: int | None) -> None:
@@ -731,7 +732,7 @@ class ModService:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             repo.update(mod, nexus_mod_id=nexus_mod_id)
 
     def forget_missing_mod(self, mod_id: int) -> None:
@@ -741,7 +742,7 @@ class ModService:
             if mod is None:
                 return
             if mod.is_present:
-                raise ModOperationError("只能移除已丢失 Mod 的记录。")
+                raise ModOperationError(tr('services.mod_service.only_records_for_missing_mods_can_be_removed'))
             repo.delete(mod)
 
     # ------------------------------------------------------------------
@@ -753,25 +754,25 @@ class ModService:
             repo = ModRepository(session)
             mod = repo.get(mod_id)
             if mod is None:
-                raise ModOperationError("Mod 不存在。")
+                raise ModOperationError(tr('services.mod_service.mod_does_not_exist'))
             game = GameRepository(session).get(mod.game_id)
             if game is None:
-                raise ModOperationError("游戏记录不存在。")
+                raise ModOperationError(tr('services.mod_service.game_record_does_not_exist'))
             mods_root = Path(game.mods_path)
             mod_dir = (mods_root / mod.relative_path).resolve()
             if not is_within(mod_dir, mods_root):
-                raise ModOperationError("Mod 路径不在 Mods 目录内，已拒绝删除。")
+                raise ModOperationError(tr('services.mod_service.mod_path_is_not_inside_the_mods_directory_deletion_r_3996d6'))
             backup_id: int | None = None
             if mod.is_present and mod_dir.exists():
                 if not delete_files:
-                    raise ModOperationError("仅移除记录时请使用“忘记记录”，不要执行卸载。")
+                    raise ModOperationError(tr('services.mod_service.to_remove_only_the_record_use_forget_record_do_not_u_5ac6a6'))
                 backup = self.backups.create(
                     game_id=game.id,
                     root=mods_root,
                     items=[mod_dir],
                     kind=BackupKind.UNINSTALL,
-                    label=f"卸载 {mod.name} {mod.version}",
-                    note=f"卸载 {mod.unique_id} 前自动备份",
+                    label=tr('services.mod_service.uninstall_0_1', mod.name, mod.version),
+                    note=tr('services.mod_service.automatic_backup_before_uninstalling_0', mod.unique_id),
                     mod_id=mod.id,
                 )
                 backup_id = backup.id
@@ -790,7 +791,7 @@ class ModService:
             game_id = game.id
         self.scan_game(game_id, record_activity=False)
         self.activity.record(
-            f"已卸载 {name}" + ("（已创建备份）" if backup_id else ""),
+            tr('services.mod_service.uninstalled_0', name) + (tr('services.mod_service.backup_created') if backup_id else ""),
             kind="uninstall",
             level="warning",
             game_id=game_id,
@@ -802,7 +803,7 @@ class ModService:
         backup = self.backups.restore(backup_id)
         self.scan_game(backup.game_id, record_activity=False)
         self.activity.record(
-            f"已回滚到备份：{backup.label}",
+            tr('services.mod_service.rolled_back_to_backup_0', backup.label),
             kind="rollback",
             level="warning",
             game_id=backup.game_id,
