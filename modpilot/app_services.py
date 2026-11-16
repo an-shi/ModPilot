@@ -9,6 +9,7 @@ from .config import AppPaths, ConfigStore
 from .core.credentials import NEXUS_SECRET, CredentialStore, SecretBackend
 from .core.logging_setup import setup_logging
 from .data.db import Database
+from .i18n import set_language
 from .services.activity import ActivityService
 from .services.backup_service import BackupService
 from .services.dashboard_service import DashboardService
@@ -23,6 +24,7 @@ from .services.translation.engine import TranslationEngine
 from .services.translation.llm import LlmClient
 from .services.update_service import UpdateService
 from .version import VERSION
+from .i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -40,11 +42,12 @@ class AppServices:
         self.credentials = CredentialStore(self.paths.base, backend=credential_backend)
         self.config = ConfigStore(self.paths)
         self.config.load()
+        set_language(self.config.config.ui_language)
         self.log_path = setup_logging(
             self.paths.logs_dir,
             secret_provider=self.credentials.known_secrets,
         )
-        log.info("ModPilot %s 启动，数据目录：%s", VERSION, self.paths.base)
+        log.info(tr('app_services.modpilot_s_started_data_directory_s'), VERSION, self.paths.base)
         if self.config.load_error:
             log.warning(self.config.load_error)
         self.db = Database(self.paths.db_path)
@@ -57,6 +60,7 @@ class AppServices:
         self.backups = BackupService(self.db, self.paths, self.activity)
         self.nexus = NexusClient(lambda: self.credentials.get(NEXUS_SECRET))
         self.games = GameService(self.db, self.registry, self.config, self.activity)
+        self.games.migrate_display_names()
         self.mods = ModService(self.db, self.registry, self.paths, self.backups, self.activity)
         self.profiles = ProfileService(self.db, self.mods, self.activity)
         self.downloads = DownloadManager(
@@ -108,7 +112,7 @@ class AppServices:
         interrupted = self.downloads.reset_interrupted()
         if interrupted:
             self.activity.record(
-                f"检测到 {interrupted} 个上次中断的下载，已暂停，可在下载中心继续。",
+                tr('app_services.found_0_downloads_interrupted_last_time_they_have_be_e974a5', interrupted),
                 kind="download",
                 level="warning",
             )
@@ -123,7 +127,7 @@ class AppServices:
             elif active is None and games:
                 self.config.update(active_game_id=games[0].id)
         except Exception:
-            log.exception("校验当前游戏失败")
+            log.exception(tr('app_services.failed_to_validate_the_current_game'))
 
     @property
     def nexus_configured(self) -> bool:
@@ -139,4 +143,4 @@ class AppServices:
         finally:
             self.nexus.close()
             self.db.dispose()
-            log.info("ModPilot 已关闭")
+            log.info(tr('app_services.modpilot_closed'))

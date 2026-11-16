@@ -11,9 +11,7 @@ from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox, QStyleFactory
 
 from .app_services import AppServices
-from .ui.icons import render_pixmap
-from .ui.main_window import MainWindow
-from .ui.theme import apply_theme, theme_colors
+from .i18n import set_language, tr
 from .version import APP_ID, APP_NAME, VERSION
 
 log = logging.getLogger(__name__)
@@ -60,11 +58,17 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         QMessageBox.critical(
             None,
-            "ModPilot 启动失败",
-            f"无法初始化本地数据：{exc}\n\n"
-            "请确认数据目录可写，或使用 --data-dir 指定其他目录。",
+            tr('app.modpilot_failed_to_start'),
+            tr('app.unable_to_initialize_local_data_0_make_sure_the_data_28a885', exc),
         )
         return 1
+
+    # Load the UI only after the persisted language is active so class-level
+    # labels and constructors use the correct locale.
+    set_language(services.config.config.ui_language)
+    from .ui.icons import render_pixmap
+    from .ui.main_window import MainWindow
+    from .ui.theme import apply_theme, theme_colors
 
     theme = services.config.config.theme
     app.setProperty("theme", theme)
@@ -76,16 +80,16 @@ def main(argv: list[str] | None = None) -> int:
             sys.__excepthook__(exc_type, exc, tb)
             return
         text = "".join(traceback.format_exception(exc_type, exc, tb))
-        logging.getLogger("modpilot").error("未捕获异常：\n%s", text)
+        logging.getLogger("modpilot").error(tr('app.uncaught_exception_s'), text)
         QMessageBox.critical(
             None,
-            "ModPilot 发生未处理错误",
-            f"{exc}\n\n详细信息已写入日志：{services.log_path}",
+            tr('app.unhandled_error_in_modpilot'),
+            tr('app.0_details_written_to_log_1', exc, services.log_path),
         )
 
     sys.excepthook = exception_hook
     window = MainWindow(services)
     window.show()
     if services.config.load_error:
-        QMessageBox.warning(window, "配置已重置", services.config.load_error)
+        QMessageBox.warning(window, tr('app.configuration_reset'), services.config.load_error)
     return app.exec()
