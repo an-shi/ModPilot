@@ -27,8 +27,9 @@ ModPilot 使用 Python 3.12 + PySide6，SQLite 保存本地数据，Nexus Mods �
 | AI 深度诊断 | 已实现 | 结构化日志 + 元数据；严格证据校验，拒绝无证据结论 |
 | 修复计划 | 已实现 | 计划、勾选、风险等级、确认执行、重新扫描验证、失败回滚 |
 | 自动修复 | 部分实现 | 可自动禁用重复副本、启用缺失依赖、在日志提供明确 Nexus 链接时安装依赖、清理临时文件；文件冲突/配置修复需手动 |
+| 界面多语言 | 已实现 | 默认选中简体中文；`zh_CN.json` 与 `en_US.json` 完整语言包，页面、控件、状态/错误文案均使用消息 ID |
 | 深色/浅色主题 | 已实现 | 响应式布局，支持窗口缩放 |
-| 测试 | 已实现 | 53 个 pytest 测试，覆盖适配器、安装、备份、配置档、Nexus、下载、更新、汉化、诊断、凭证与 UI 烟测 |
+| 测试 | 已实现 | 59 个 pytest 测试，覆盖适配器、安装、备份、配置档、Nexus、下载、更新、汉化、诊断、凭证、i18n 与 UI 烟测 |
 
 ### 明确未实现 / 限制
 
@@ -40,7 +41,7 @@ ModPilot 使用 Python 3.12 + PySide6，SQLite 保存本地数据，Nexus Mods �
 - **配置文件自动修复未实现**。诊断会标记 manifest/配置问题，但不会自动编辑未知格式的用户配置。
 - **已知问题规则库默认为空**，避免编造兼容性结论。可通过 `known_issues.json` 增加有公开来源的规则。
 - **自动更新仅应用运行期间执行**；关闭应用后不会后台运行。
-- **UI 仅中文**；代码与架构支持后续本地化。
+- **语言切换需重启应用**；完整界面在下一次启动时应用。外部日志原文和用户 Mod 内容保持原文。
 - **安装包脚本已提供**，但构建安装包需要本机安装 Inno Setup。
 - 没有云端账号、自建服务器或遥测。
 
@@ -78,6 +79,7 @@ python run.py --data-dir "D:\ModPilotData"
 2. 在“设置”填写 Nexus API Key。Key 从 <https://www.nexusmods.com/users/myaccount?tab=api> 获取。
 3. 如需 AI 汉化/诊断，填写 OpenAI 兼容 Base URL、模型名称和 API Key。支持自定义请求头与请求体参数。
 4. 扫描 Mods 目录，按需安装/启用/汉化/诊断。
+5. 界面语言默认简体中文；可在“设置 → 更新与外观 → 界面语言”切换为 English，重启应用后完整生效。
 
 > AI 配置中的额外请求头/请求体仅用于非敏感参数（如 `top_p`、自定义路由头）。API Key 请使用专用输入框；带 `Authorization`、`token`、`secret` 等字样的自定义字段会被拒绝，以免密钥落入配置文件。
 
@@ -136,7 +138,7 @@ UI → TaskManager（线程池）→ Service → Adapter / Repository / Core
                              SQLite / 文件系统 / Nexus / LLM
 ```
 
-详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+详细设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，多语言扩展见 [docs/I18N.md](docs/I18N.md)。
 
 ## 测试
 

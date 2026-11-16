@@ -65,6 +65,10 @@ ModPilot 是本地优先的 Windows 桌面 Mod 管理器。架构的第一约束
 
 核心代码只通过 `GameAdapter` 暴露的语义工作，不读取 `manifest.json`、不理解 SMAPI 日志、不假设 i18n 文件位置。详见 [ADDING_GAME.md](ADDING_GAME.md)。
 
+### 国际化层
+
+界面与业务层中的用户可见文案通过 `modpilot/i18n.py` 的 `tr()` 和稳定消息 ID 输出，源码不包含硬编码中文界面文案。完整目录位于 `modpilot/locales/zh_CN.json` 与 `modpilot/locales/en_US.json`，默认选中 `zh-CN`。启动时先读取配置并加载语言目录，再导入 UI，避免窗口构造时使用错误语言。语言切换保存在本地设置中，完整界面在下次启动时生效。详见 [I18N.md](I18N.md)。
+
 ### 基础设施层
 
 - `core.archive`：ZIP/7Z/TAR.GZ 安全解压，拒绝绝对路径、`..`、符号链接、异常体积。
