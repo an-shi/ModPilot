@@ -12,6 +12,9 @@ datas = [
     ("modpilot/locales/zh_CN.json", "modpilot/locales"),
     ("modpilot/locales/en_US.json", "modpilot/locales"),
     ("resources/modpilot.ico", "resources"),
+    ("resources/check.svg", "resources"),
+    ("resources/arrow_up.svg", "resources"),
+    ("resources/arrow_down.svg", "resources"),
 ]
 
 a = Analysis(
