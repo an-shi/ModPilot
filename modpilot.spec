@@ -9,6 +9,8 @@ hiddenimports = (
 
 datas = [
     ("modpilot/adapters/stardew/data/known_issues.json", "modpilot/adapters/stardew/data"),
+    ("modpilot/locales/zh_CN.json", "modpilot/locales"),
+    ("modpilot/locales/en_US.json", "modpilot/locales"),
     ("resources/modpilot.ico", "resources"),
 ]
 

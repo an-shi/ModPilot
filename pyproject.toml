@@ -39,6 +39,7 @@ include = ["modpilot*"]
 modpilot = [
     "resources/**/*",
     "adapters/stardew/data/*.json",
+    "locales/*.json",
 ]
 
 [tool.pytest.ini_options]
