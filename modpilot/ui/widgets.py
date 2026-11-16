@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, Signal
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -17,7 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .icons import icon
+from .icons import icon, render_pixmap
 from .theme import theme_colors
 from ..i18n import tr
 
@@ -40,6 +41,49 @@ def make_icon(name: str, color: str | None = None, size: int = 18):
     return icon(name, color or text_color(), size)
 
 
+def button_icon_color(variant: str | None, *, active: bool = False) -> str:
+    """Return an icon color that stays visible on the button variant."""
+
+    colors = theme_colors(current_theme())
+    if variant == "primary":
+        return colors["accent_text"]
+    if variant == "danger":
+        return "#FFFFFF" if active else colors["danger"]
+    if variant in ("ghost", "tool"):
+        return colors["text"] if active else colors["muted"]
+    return colors["text"]
+
+
+def _button_icon(name: str, variant: str | None, size: int = 17) -> QIcon:
+    colors = theme_colors(current_theme())
+    result = QIcon()
+    result.addPixmap(render_pixmap(name, button_icon_color(variant), size), QIcon.Normal)
+    result.addPixmap(
+        render_pixmap(name, button_icon_color(variant, active=True), size),
+        QIcon.Active,
+    )
+    result.addPixmap(render_pixmap(name, colors["subtle"], size), QIcon.Disabled)
+    return result
+
+
+def refresh_button_icons(root: QWidget) -> None:
+    """Recolor icons after a theme switch without rebuilding the widget tree."""
+
+    for button in root.findChildren(QPushButton):
+        name = button.property("iconName")
+        if not name:
+            continue
+        variant = button.property("variant")
+        size = int(button.property("iconPx") or 17)
+        button.setIcon(
+            _button_icon(
+                str(name),
+                str(variant) if variant else None,
+                size,
+            )
+        )
+
+
 def make_button(
     text: str,
     *,
@@ -50,10 +94,16 @@ def make_button(
     icon_color: str | None = None,
 ) -> QPushButton:
     button = QPushButton(text)
-    if icon_name:
-        button.setIcon(make_icon(icon_name, icon_color or text_color(), 17))
     if variant:
         button.setProperty("variant", variant)
+    if icon_name:
+        button.setProperty("iconName", icon_name)
+        button.setProperty("iconPx", 17)
+        button.setIcon(
+            make_icon(icon_name, icon_color, 17)
+            if icon_color
+            else _button_icon(icon_name, variant, 17)
+        )
     button.setCursor(Qt.PointingHandCursor)
     if tooltip:
         button.setToolTip(tooltip)
@@ -170,17 +220,14 @@ class StatCard(Card):
     ) -> None:
         super().__init__(parent)
         self.setMinimumHeight(112)
-        colors = theme_colors(current_theme())
+        self._icon_name = icon_name
+        self._tone = tone
         row = QHBoxLayout()
         row.setSpacing(12)
-        icon_label = QLabel()
-        icon_label.setFixedSize(40, 40)
-        icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setPixmap(make_icon(icon_name, colors.get(tone, colors["accent"]), 22).pixmap(22, 22))
-        icon_label.setStyleSheet(
-            f"background: {colors.get(tone + '_soft', colors['surface2'])}; border-radius: 10px;"
-        )
-        row.addWidget(icon_label, 0, Qt.AlignTop)
+        self.icon_label = QLabel()
+        self.icon_label.setFixedSize(40, 40)
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        row.addWidget(self.icon_label, 0, Qt.AlignTop)
         text_layout = QVBoxLayout()
         text_layout.setSpacing(1)
         self.value_label = QLabel(value)
@@ -196,6 +243,22 @@ class StatCard(Card):
             text_layout.addWidget(hint_label)
         row.addLayout(text_layout, 1)
         self.add_layout(row)
+        self.refresh_theme()
+
+    def refresh_theme(self) -> None:
+        colors = theme_colors(current_theme())
+        self.icon_label.setPixmap(
+            make_icon(
+                self._icon_name,
+                colors.get(self._tone, colors["accent"]),
+                22,
+            ).pixmap(22, 22)
+        )
+        self.icon_label.setStyleSheet(
+            "background: "
+            f"{colors.get(self._tone + '_soft', colors['surface2'])}; "
+            "border-radius: 10px;"
+        )
 
     def set_value(self, value: str | int) -> None:
         self.value_label.setText(str(value))
@@ -215,10 +278,10 @@ class EmptyState(QWidget):
         layout.setContentsMargins(24, 40, 24, 40)
         layout.setSpacing(10)
         layout.setAlignment(Qt.AlignCenter)
-        icon_label = QLabel()
-        icon_label.setPixmap(make_icon(icon_name, muted_color(), 42).pixmap(42, 42))
-        icon_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(icon_label)
+        self._icon_name = icon_name
+        self.icon_label = QLabel()
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.icon_label)
         title_label = QLabel(title)
         title_label.setObjectName("EmptyTitle")
         title_label.setAlignment(Qt.AlignCenter)
@@ -232,6 +295,12 @@ class EmptyState(QWidget):
             layout.addWidget(text_label, 0, Qt.AlignCenter)
         if action:
             layout.addWidget(action, 0, Qt.AlignCenter)
+        self.refresh_theme()
+
+    def refresh_theme(self) -> None:
+        self.icon_label.setPixmap(
+            make_icon(self._icon_name, muted_color(), 42).pixmap(42, 42)
+        )
 
 
 class ClickableCard(Card):

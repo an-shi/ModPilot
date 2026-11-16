@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...domain.models import DashboardSummary
-from ..theme import theme_colors
+
 from ..widgets import (
     Badge,
     Card,
@@ -223,11 +223,19 @@ class DashboardPage(BasePage):
             row.setObjectName("CardFlat")
             layout = QHBoxLayout(row)
             layout.setContentsMargins(10, 8, 10, 8)
-            colors = theme_colors(self.controller._theme)
             dot = QLabel()
+            dot.setObjectName("EnvDot")
             dot.setFixedSize(8, 8)
-            color = colors["success"] if check.ok else colors["danger" if check.severity.value in ("error", "critical") else "warning"]
-            dot.setStyleSheet(f"background: {color}; border-radius: 4px;")
+            dot.setProperty(
+                "tone",
+                "success"
+                if check.ok
+                else (
+                    "danger"
+                    if check.severity.value in ("error", "critical")
+                    else "warning"
+                ),
+            )
             layout.addWidget(dot)
             label = QLabel(check.label)
             label.setMinimumWidth(148)

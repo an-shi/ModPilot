@@ -30,6 +30,7 @@ from ..widgets import (
     Card,
     EmptyState,
     SectionHeader,
+    button_icon_color,
     cell,
     clear_layout,
     clear_table,
@@ -397,7 +398,7 @@ class ModsPage(BasePage):
         self.details_layout.addWidget(self.deps_container)
         self.details_error = QLabel("")
         self.details_error.setWordWrap(True)
-        self.details_error.setStyleSheet("color: #FF6F7E;")
+        self.details_error.setObjectName("ErrorText")
         self.details_layout.addWidget(self.details_error)
 
         policy_row = QHBoxLayout()
@@ -552,9 +553,9 @@ class ModsPage(BasePage):
         self.policy_combo.setCurrentIndex(max(0, index))
         self.policy_combo.blockSignals(False)
         self.toggle_button.setText(tr('ui.pages.mods.disable') if mod.enabled else tr('ui.pages.mods.enable'))
-        self.toggle_button.setIcon(
-            make_icon("pause" if mod.enabled else "play", "#FFFFFF", 16)
-        )
+        icon_name = "pause" if mod.enabled else "play"
+        self.toggle_button.setProperty("iconName", icon_name)
+        self.toggle_button.setIcon(make_icon(icon_name, button_icon_color("primary"), 16))
         self.toggle_button.setEnabled(mod.is_present)
         self.check_button.setEnabled(bool(mod.nexus_mod_id))
         self.nexus_button.setEnabled(bool(mod.nexus_mod_id))

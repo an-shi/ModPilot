@@ -231,7 +231,7 @@ class TranslationPage(BasePage):
         editor_actions.addWidget(self.retranslate_button)
         editor_actions.addStretch(1)
         self.unit_error = QLabel("")
-        self.unit_error.setStyleSheet("color: #FF6F7E;")
+        self.unit_error.setObjectName("ErrorText")
         self.unit_error.setWordWrap(True)
         editor_actions.addWidget(self.unit_error, 1)
         editor_card.add_layout(editor_actions)

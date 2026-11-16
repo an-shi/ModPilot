@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 from PySide6.QtWidgets import QApplication, QWidget
 
 THEMES = {
@@ -17,13 +20,16 @@ THEMES = {
         "subtle": "#5F6B7E",
         "accent": "#5B9DFF",
         "accent_hover": "#76ADFF",
+        "accent_fill": "#2F6BDB",
+        "accent_fill_hover": "#3B7BEE",
         "accent_soft": "#1B2F4D",
-        "accent_text": "#0B1220",
+        "accent_text": "#FFFFFF",
         "success": "#3DD68C",
         "success_soft": "#163527",
         "warning": "#F3B84B",
         "warning_soft": "#332714",
         "danger": "#FF6F7E",
+        "danger_hover": "#D94A5A",
         "danger_soft": "#3B1C23",
         "info": "#68C7E8",
         "info_soft": "#15303A",
@@ -44,6 +50,8 @@ THEMES = {
         "subtle": "#8B97AA",
         "accent": "#2563EB",
         "accent_hover": "#1D4ED8",
+        "accent_fill": "#2563EB",
+        "accent_fill_hover": "#1D4ED8",
         "accent_soft": "#E7EFFF",
         "accent_text": "#FFFFFF",
         "success": "#0F9F6E",
@@ -51,6 +59,7 @@ THEMES = {
         "warning": "#B7791F",
         "warning_soft": "#FFF4DD",
         "danger": "#D64552",
+        "danger_hover": "#B8323E",
         "danger_soft": "#FDECEE",
         "info": "#0E7490",
         "info_soft": "#E3F6FA",
@@ -212,12 +221,19 @@ QLabel#Badge[tone="danger"] { background: @danger_soft; color: @danger; }
 QLabel#Badge[tone="info"] { background: @info_soft; color: @info; }
 QLabel#Badge[tone="accent"] { background: @accent_soft; color: @accent; }
 QLabel#Badge[tone="muted"] { background: @surface2; color: @muted; }
+QLabel#EnvDot {
+    background: @success;
+    border-radius: 4px;
+}
+QLabel#EnvDot[tone="warning"] { background: @warning; }
+QLabel#EnvDot[tone="danger"] { background: @danger; }
+QLabel#ErrorText { color: @danger; }
 QPushButton {
     background: @surface2;
     border: 1px solid @border;
     border-radius: 8px;
     padding: 0 14px;
-    min-height: 34px;
+    min-height: 38px;
     color: @text;
     font-weight: 500;
 }
@@ -234,14 +250,14 @@ QPushButton:disabled {
     border-color: @border_soft;
 }
 QPushButton[variant="primary"] {
-    background: @accent;
+    background: @accent_fill;
     color: @accent_text;
-    border: 1px solid @accent;
+    border: 1px solid @accent_fill;
     font-weight: 600;
 }
 QPushButton[variant="primary"]:hover {
-    background: @accent_hover;
-    border-color: @accent_hover;
+    background: @accent_fill_hover;
+    border-color: @accent_fill_hover;
 }
 QPushButton[variant="primary"]:disabled {
     background: @surface3;
@@ -263,7 +279,7 @@ QPushButton[variant="danger"] {
     border-color: transparent;
 }
 QPushButton[variant="danger"]:hover {
-    background: @danger;
+    background: @danger_hover;
     color: #FFFFFF;
 }
 QPushButton[variant="tool"] {
@@ -286,16 +302,19 @@ QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
     border: 1px solid @border;
     border-radius: 8px;
     padding: 0 10px;
-    min-height: 34px;
+    min-height: 38px;
     selection-background-color: @selection;
+}
+QSpinBox, QDoubleSpinBox {
+    padding-right: 28px;
 }
 QComboBox {
     background: @surface2;
     border: 1px solid @border;
     border-radius: 8px;
     padding-left: 10px;
-    padding-right: 26px;
-    min-height: 34px;
+    padding-right: 28px;
+    min-height: 38px;
 }
 QTextEdit, QPlainTextEdit {
     padding: 8px 10px;
@@ -320,7 +339,12 @@ QLineEdit#GlobalSearch:focus {
 }
 QComboBox::drop-down {
     border: none;
-    width: 24px;
+    width: 26px;
+}
+QComboBox::down-arrow {
+    image: @down_image;
+    width: 10px;
+    height: 10px;
 }
 QComboBox QAbstractItemView {
     background: @surface;
@@ -331,12 +355,59 @@ QComboBox QAbstractItemView {
     outline: none;
 }
 QCheckBox, QRadioButton {
-    spacing: 8px;
+    spacing: 9px;
     color: @text;
 }
 QCheckBox::indicator, QRadioButton::indicator {
     width: 16px;
     height: 16px;
+}
+QCheckBox::indicator {
+    background: @surface2;
+    border: 1px solid @border;
+    border-radius: 4px;
+}
+QCheckBox::indicator:hover {
+    border-color: @accent;
+}
+QCheckBox::indicator:checked {
+    background: @accent_fill;
+    border-color: @accent_fill;
+    image: @check_image;
+}
+QCheckBox::indicator:disabled {
+    background: @surface3;
+    border-color: @border_soft;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 24px;
+    background: transparent;
+    border-left: 1px solid @border;
+    border-top-right-radius: 8px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 24px;
+    background: transparent;
+    border-left: 1px solid @border;
+    border-bottom-right-radius: 8px;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background: @surface3;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: @up_image;
+    width: 8px;
+    height: 8px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: @down_image;
+    width: 8px;
+    height: 8px;
 }
 QTableWidget, QTableView, QTreeWidget, QListWidget {
     background: transparent;
@@ -465,10 +536,26 @@ def theme_colors(theme: str) -> dict[str, str]:
     return THEMES.get(theme, THEMES["dark"])
 
 
+def resources_dir() -> Path:
+    """Return the bundled resource directory in source and frozen builds."""
+
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)) / "resources"
+    return Path(__file__).resolve().parents[2] / "resources"
+
+
+def _asset_url(name: str) -> str:
+    path = (resources_dir() / name).resolve().as_posix()
+    return f'url("{path}")'
+
+
 def build_stylesheet(theme: str) -> str:
     import re
 
-    colors = theme_colors(theme)
+    colors = dict(theme_colors(theme))
+    colors["check_image"] = _asset_url("check.svg")
+    colors["up_image"] = _asset_url("arrow_up.svg")
+    colors["down_image"] = _asset_url("arrow_down.svg")
     # Replace exact tokens. A naive str.replace would turn @surface2 into
     # "#171C242" because @surface is a prefix of @surface2.
     return re.sub(
@@ -479,6 +566,7 @@ def build_stylesheet(theme: str) -> str:
 
 
 def apply_theme(app: QApplication, theme: str) -> None:
+    app.setProperty("theme", theme)
     app.setStyleSheet(build_stylesheet(theme))
 
 

@@ -36,7 +36,7 @@ from .pages.translation import TranslationPage
 from .pages.updates import UpdatesPage
 from .tasks import TaskManager
 from .theme import apply_theme, theme_colors
-from .widgets import show_toast
+from .widgets import refresh_button_icons, show_toast
 from ..i18n import tr
 
 log = logging.getLogger(__name__)
@@ -410,6 +410,11 @@ class MainWindow(QMainWindow):
             return
         self.services.config.update(theme=new_theme)
         apply_theme(QApplication.instance(), new_theme)
+        refresh_button_icons(self)
+        for widget in self.findChildren(QWidget):
+            refresh = getattr(widget, "refresh_theme", None)
+            if callable(refresh):
+                refresh()
         self._update_theme_button()
         self._update_nav_icons()
         self.setWindowIcon(
