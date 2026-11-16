@@ -9,6 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .version import APP_NAME
+from .i18n import tr
 
 
 def _default_data_dir() -> Path:
@@ -90,12 +91,12 @@ class LlmConfig(BaseModel):
     def _validate_base_url(cls, value: str) -> str:
         value = value.strip().rstrip("/")
         if not value:
-            raise ValueError("API 地址不能为空")
+            raise ValueError(tr('config.api_address_cannot_be_empty'))
         local_http = value.startswith(
             ("http://localhost", "http://127.0.0.1", "http://[::1]")
         )
         if not (value.startswith("https://") or local_http):
-            raise ValueError("API 地址必须使用 HTTPS（本机 localhost/127.0.0.1 可使用 HTTP）")
+            raise ValueError(tr('config.api_address_must_use_https_http_is_allowed_for_local_3c781b'))
         return value
 
     @field_validator("extra_headers")
@@ -115,7 +116,7 @@ class LlmConfig(BaseModel):
             lower = key.lower()
             if lower in blocked_exact or any(fragment in lower for fragment in blocked_fragments):
                 raise ValueError(
-                    f"额外请求头不能包含凭据字段 {key}；请使用 API Key 输入框保存密钥。"
+                    tr('config.extra_request_headers_cannot_contain_the_credential_465add', key)
                 )
         return value
 
@@ -125,7 +126,7 @@ class LlmConfig(BaseModel):
         blocked_fragments = ("api_key", "apikey", "api-key", "token", "secret")
         for key in value:
             if any(fragment in str(key).lower() for fragment in blocked_fragments):
-                raise ValueError(f"额外参数不能包含凭据字段 {key}；请使用 API Key 输入框。")
+                raise ValueError(tr('config.extra_parameters_cannot_contain_the_credential_field_fba3d2', key))
         return value
 
 
@@ -133,7 +134,7 @@ class AppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     theme: Literal["dark", "light"] = "dark"
-    ui_language: Literal["zh-CN"] = "zh-CN"
+    ui_language: Literal["zh-CN", "en-US"] = "zh-CN"
     update_policy: Literal[
         "manual", "notify", "confirm_download", "auto_download", "auto_install", "ignore"
     ] = "notify"
@@ -172,7 +173,7 @@ class ConfigStore:
             data = json.loads(self.paths.config_path.read_text(encoding="utf-8"))
             self._config = AppConfig.model_validate(data)
         except Exception as exc:  # corrupt config should never prevent startup
-            self.load_error = f"配置文件无法读取，已使用默认设置：{exc}"
+            self.load_error = tr('config.could_not_read_the_configuration_file_default_settin_d6ec10', exc)
             broken = self.paths.config_path.with_suffix(".json.invalid")
             try:
                 self.paths.config_path.replace(broken)
