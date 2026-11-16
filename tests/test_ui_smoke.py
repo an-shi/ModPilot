@@ -12,13 +12,24 @@ from PySide6.QtWidgets import QApplication
 from modpilot.app_services import AppServices
 from modpilot.core.credentials import InMemorySecretBackend
 from modpilot.ui.main_window import MainWindow
-from modpilot.ui.theme import apply_theme
+from modpilot.ui.theme import apply_theme, build_stylesheet, resources_dir
 
 
 @pytest.fixture(scope="module")
 def qapp():
     app = QApplication.instance() or QApplication([])
     yield app
+
+
+def test_theme_stylesheets_resolve_assets() -> None:
+    for theme in ("dark", "light"):
+        stylesheet = build_stylesheet(theme)
+        assert "@" not in stylesheet
+        assert "check.svg" in stylesheet
+        assert "arrow_up.svg" in stylesheet
+        assert "arrow_down.svg" in stylesheet
+    for name in ("check.svg", "arrow_up.svg", "arrow_down.svg"):
+        assert (resources_dir() / name).is_file()
 
 
 def test_window_with_real_game_and_mod(qapp, tmp_path: Path) -> None:
