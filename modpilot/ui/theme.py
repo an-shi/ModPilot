@@ -104,7 +104,7 @@ QPushButton#NavButton {
     color: @muted;
     text-align: left;
     padding-left: 12px;
-    padding-right: 42px;
+    padding-right: 34px;
     min-height: 38px;
     font-weight: 500;
 }

@@ -37,6 +37,7 @@ from .pages.updates import UpdatesPage
 from .tasks import TaskManager
 from .theme import apply_theme, theme_colors
 from .widgets import show_toast
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ class MainWindow(QMainWindow):
 
         self.sidebar = QFrame()
         self.sidebar.setObjectName("Sidebar")
-        self.sidebar.setFixedWidth(226)
+        self.sidebar.setFixedWidth(246)
         sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(14, 20, 14, 16)
         sidebar_layout.setSpacing(4)
@@ -144,7 +145,7 @@ class MainWindow(QMainWindow):
         brand_text.setSpacing(0)
         brand = QLabel(APP_NAME)
         brand.setObjectName("Brand")
-        brand_sub = QLabel("AI Mod 管理中枢")
+        brand_sub = QLabel(tr('ui.main_window.ai_mod_management_hub'))
         brand_sub.setObjectName("BrandSub")
         brand_text.addWidget(brand)
         brand_text.addWidget(brand_sub)
@@ -160,21 +161,21 @@ class MainWindow(QMainWindow):
         self.pages_stack.setObjectName("Pages")
 
         page_defs = [
-            ("dashboard", "总览", "dashboard", DashboardPage),
-            ("games", "游戏管理", "gamepad", GamesPage),
-            ("mods", "Mod 管理", "mods", ModsPage),
-            ("downloads", "下载中心", "download", DownloadsPage),
-            ("updates", "更新中心", "update", UpdatesPage),
-            ("translation", "汉化中心", "translate", TranslationPage),
-            ("diagnostics", "智能诊断", "diagnose", DiagnosticsPage),
-            ("profiles", "配置档", "profiles", ProfilesPage),
-            ("settings", "设置", "settings", SettingsPage),
+            ("dashboard", tr('ui.main_window.overview'), "dashboard", DashboardPage),
+            ("games", tr('ui.main_window.game_management'), "gamepad", GamesPage),
+            ("mods", tr('ui.main_window.mod_management'), "mods", ModsPage),
+            ("downloads", tr('ui.main_window.download_center'), "download", DownloadsPage),
+            ("updates", tr('ui.main_window.update_center'), "update", UpdatesPage),
+            ("translation", tr('ui.main_window.translation_center'), "translate", TranslationPage),
+            ("diagnostics", tr('ui.main_window.smart_diagnosis'), "diagnose", DiagnosticsPage),
+            ("profiles", tr('ui.main_window.profile'), "profiles", ProfilesPage),
+            ("settings", tr('ui.main_window.settings'), "settings", SettingsPage),
         ]
 
-        sidebar_layout.addWidget(self._nav_section("工作区"))
+        sidebar_layout.addWidget(self._nav_section(tr('ui.main_window.workspace')))
         for index, (key, label, icon_name, page_class) in enumerate(page_defs):
             if key == "settings":
-                sidebar_layout.addWidget(self._nav_section("系统"))
+                sidebar_layout.addWidget(self._nav_section(tr('ui.main_window.system')))
             page = page_class(self)
             self.pages.append(page)
             self.pages_stack.addWidget(page)
@@ -186,7 +187,7 @@ class MainWindow(QMainWindow):
             self.nav_buttons.append(button)
             sidebar_layout.addWidget(button)
         sidebar_layout.addStretch(1)
-        footer = QLabel(f"版本 {VERSION}  ·  本地优先")
+        footer = QLabel(tr('ui.main_window.version_0_local_first', VERSION))
         footer.setObjectName("SidebarVersion")
         footer.setAlignment(Qt.AlignCenter)
         sidebar_layout.addWidget(footer)
@@ -198,30 +199,31 @@ class MainWindow(QMainWindow):
         content_layout.setSpacing(0)
         self.header = QFrame()
         self.header.setObjectName("Header")
-        self.header.setFixedHeight(80)
+        self.header.setFixedHeight(86)
         header_layout = QHBoxLayout(self.header)
         header_layout.setContentsMargins(24, 14, 24, 14)
         header_layout.setSpacing(12)
         title_block = QVBoxLayout()
         title_block.setSpacing(2)
-        self.header_title = QLabel("总览")
+        self.header_title = QLabel(tr('ui.main_window.overview'))
         self.header_title.setObjectName("PageTitle")
         self.header_subtitle = QLabel("")
         self.header_subtitle.setObjectName("PageSubtitle")
+        self.header_subtitle.setWordWrap(True)
         title_block.addWidget(self.header_title)
         title_block.addWidget(self.header_subtitle)
         header_layout.addLayout(title_block, 1)
 
         self.game_combo = QComboBox()
         self.game_combo.setMinimumWidth(190)
-        self.game_combo.setToolTip("当前游戏")
+        self.game_combo.setToolTip(tr('ui.main_window.current_game'))
         self.game_combo.currentIndexChanged.connect(self._on_game_selected)
         header_layout.addWidget(self.game_combo)
 
         self.search = QLineEdit()
         self.search.setObjectName("GlobalSearch")
-        self.search.setPlaceholderText("搜索当前游戏 Mod…")
-        self.search.setToolTip("回车跳转到 Mod 管理并筛选当前游戏")
+        self.search.setPlaceholderText(tr('ui.main_window.search_current_game_mods'))
+        self.search.setToolTip(tr('ui.main_window.press_enter_to_open_mod_management_and_filter_by_the_69363f'))
         self.search.setClearButtonEnabled(True)
         self.search.addAction(
             QIcon(render_pixmap("search", theme_colors(self._theme)["muted"], 17)),
@@ -233,7 +235,7 @@ class MainWindow(QMainWindow):
         self.theme_button = QPushButton()
         self.theme_button.setProperty("variant", "tool")
         self.theme_button.setFixedSize(36, 36)
-        self.theme_button.setToolTip("切换深色/浅色主题")
+        self.theme_button.setToolTip(tr('ui.main_window.toggle_dark_light_theme'))
         self.theme_button.clicked.connect(self.toggle_theme)
         header_layout.addWidget(self.theme_button)
 
@@ -254,9 +256,9 @@ class MainWindow(QMainWindow):
         status = QStatusBar()
         status.setSizeGripEnabled(False)
         self.setStatusBar(status)
-        self.status_game = QLabel("未选择游戏")
+        self.status_game = QLabel(tr('ui.main_window.no_game_selected'))
         self.status_game.setObjectName("Muted")
-        self.status_tasks = QLabel("就绪")
+        self.status_tasks = QLabel(tr('ui.main_window.ready'))
         self.status_tasks.setObjectName("Muted")
         self.status_version = QLabel(f"ModPilot {VERSION}")
         self.status_version.setObjectName("Muted")
@@ -309,21 +311,21 @@ class MainWindow(QMainWindow):
         try:
             games = self.services.games.list_games()
         except Exception as exc:
-            log.exception("读取游戏列表失败")
-            self._on_task_error("读取游戏", str(exc))
+            log.exception(tr('ui.main_window.failed_to_read_game_list'))
+            self._on_task_error(tr('ui.main_window.loading_games'), str(exc))
             games = []
         active_id = self.services.config.config.active_game_id
         self.game_combo.blockSignals(True)
         self.game_combo.clear()
         if not games:
-            self.game_combo.addItem("尚未添加游戏", None)
+            self.game_combo.addItem(tr('ui.main_window.no_games_added_yet'), None)
             self.game_combo.setEnabled(False)
             self.current_game = None
         else:
             self.game_combo.setEnabled(True)
             selected_index = 0
             for index, game in enumerate(games):
-                self.game_combo.addItem(f"{game.name}", game.id)
+                self.game_combo.addItem(game.name, game.id)
                 if game.id == active_id:
                     selected_index = index
             self.game_combo.setCurrentIndex(selected_index)
@@ -332,7 +334,7 @@ class MainWindow(QMainWindow):
                 self.services.games.set_active(self.current_game.id)
         self.game_combo.blockSignals(False)
         self.status_game.setText(
-            self.current_game.install_path if self.current_game else "请先添加游戏安装目录"
+            self.current_game.install_path if self.current_game else tr('ui.main_window.please_add_the_game_installation_directory_first')
         )
         self._update_nav_badges()
         for page in self.pages:
@@ -434,11 +436,11 @@ class MainWindow(QMainWindow):
         show_toast(self, message, tone)
 
     def error_message(self, message: str) -> None:
-        QMessageBox.warning(self, "操作失败", message)
+        QMessageBox.warning(self, tr('ui.main_window.operation_failed'), message)
 
     def _on_task_error(self, title: str, message: str) -> None:
-        self.toast(f"{title}失败：{message}", "danger")
-        log.warning("任务失败：%s - %s", title, message)
+        self.toast(tr('ui.main_window.0_failed_1', title, message), "danger")
+        log.warning(tr('ui.main_window.task_failed_s_s'), title, message)
 
     # ------------------------------------------------------------------
     # Tasks / scheduler / downloads
@@ -446,16 +448,16 @@ class MainWindow(QMainWindow):
 
     def _update_task_status(self, count: int) -> None:
         self.header_progress.setVisible(count > 0)
-        self.status_tasks.setText(f"后台任务 {count}" if count else "就绪")
+        self.status_tasks.setText(tr('ui.main_window.background_task_0', count) if count else tr('ui.main_window.ready'))
 
     def run_update_check(self, *, silent: bool = False) -> None:
         if self._check_running or not self.current_game:
             if not silent:
-                self.toast("请先添加游戏。", "warning")
+                self.toast(tr('ui.main_window.please_add_a_game_first'), "warning")
             return
         if not self.services.nexus_configured:
             if not silent:
-                self.toast("请先在设置中配置 Nexus API Key。", "warning")
+                self.toast(tr('ui.main_window.please_configure_the_nexus_api_key_in_settings_first'), "warning")
             return
         self._check_running = True
         game_id = self.current_game.id
@@ -465,19 +467,19 @@ class MainWindow(QMainWindow):
             available = sum(1 for item in results if item.status.value == "available")
             errors = sum(1 for item in results if item.status.value == "error")
             if available:
-                self.toast(f"检查完成：{available} 个 Mod 有可用更新。", "success")
+                self.toast(tr('ui.main_window.check_complete_0_mods_have_updates_available', available), "success")
             elif not silent:
-                self.toast("检查完成：当前没有可用更新。", "success")
+                self.toast(tr('ui.main_window.check_complete_no_updates_available'), "success")
             if errors and not silent:
-                self.toast(f"{errors} 个 Mod 检查失败，请查看更新中心。", "warning")
+                self.toast(tr('ui.main_window.0_mods_failed_the_check_see_the_update_center', errors), "warning")
             self.on_data_changed()
 
         def failed(message: str) -> None:
             self._check_running = False
-            self.toast(f"检查更新失败：{message}", "danger")
+            self.toast(tr('ui.main_window.failed_to_check_for_updates_0', message), "danger")
 
         self.tasks.run(
-            "检查更新",
+            tr('ui.main_window.check_updates'),
             lambda: self.services.updates.check_all(game_id),
             on_done=done,
             on_error=failed,
@@ -498,21 +500,21 @@ class MainWindow(QMainWindow):
             if page.__class__.__name__ == "DownloadsPage" and hasattr(page, "on_download_event"):
                 page.on_download_event(event)
         if event.status == "completed":
-            self.toast(f"下载完成：{event.archive_path or event.kind}", "success")
+            self.toast(tr('ui.main_window.download_complete_0', event.archive_path or event.kind), "success")
             self.on_data_changed()
             if self.services.updates.should_auto_install(event.download_id):
                 def installed(_result) -> None:  # type: ignore[no-untyped-def]
-                    self.toast("更新包已自动安装。", "success")
+                    self.toast(tr('ui.main_window.the_update_package_was_installed_automatically'), "success")
                     self.on_data_changed()
 
                 self.tasks.run(
-                    "自动安装更新",
+                    tr('ui.main_window.auto_install_updates'),
                     lambda: self.services.updates.install_update_from_download(event.download_id),
                     on_done=installed,
-                    on_error=lambda message: self.toast(f"自动安装失败：{message}", "danger"),
+                    on_error=lambda message: self.toast(tr('ui.main_window.auto_install_failed_0', message), "danger"),
                 )
         elif event.status == "failed":
-            self.toast(f"下载失败：{event.error or '未知错误'}", "danger")
+            self.toast(tr('ui.main_window.download_failed_0', event.error or tr('ui.main_window.unknown_error')), "danger")
             if self.current_game:
                 self._update_nav_badges()
 
@@ -536,14 +538,13 @@ class MainWindow(QMainWindow):
             pass
         if self.tasks.active_count or active_downloads:
             box = QMessageBox(self)
-            box.setWindowTitle("退出 ModPilot")
+            box.setWindowTitle(tr('ui.main_window.exit_modpilot'))
             box.setText(
-                f"当前有 {self.tasks.active_count} 个后台任务、{active_downloads} 个未完成下载。\n"
-                "退出会暂停下载并终止正在执行的任务（文件操作会尽量回滚）。确定退出吗？"
+                tr('ui.main_window.there_are_0_background_tasks_and_1_unfinished_downlo_6bd916', self.tasks.active_count, active_downloads)
             )
             box.setIcon(QMessageBox.Warning)
-            yes = box.addButton("退出", QMessageBox.AcceptRole)
-            cancel = box.addButton("取消", QMessageBox.RejectRole)
+            yes = box.addButton(tr('ui.main_window.exit'), QMessageBox.AcceptRole)
+            cancel = box.addButton(tr('ui.main_window.cancel'), QMessageBox.RejectRole)
             box.setDefaultButton(cancel)
             box.exec()
             if box.clickedButton() is not yes:

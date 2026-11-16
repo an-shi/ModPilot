@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+from ..i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class _Worker(QRunnable):
             else:
                 result = self.fn()
         except Exception as exc:
-            log.exception("后台任务失败：%s", self.handle.title)
+            log.exception(tr('ui.tasks.background_task_failed_s'), self.handle.title)
             message = str(exc) or exc.__class__.__name__
             self.handle.failed.emit(message, traceback.format_exc())
         else:

@@ -32,23 +32,24 @@ from ..widgets import (
     setup_table,
 )
 from .base import BasePage
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
 POLICY_LABELS = {
-    "inherit": "继承全局",
-    UpdatePolicy.MANUAL.value: "仅手动检查",
-    UpdatePolicy.NOTIFY.value: "更新提醒",
-    UpdatePolicy.CONFIRM_DOWNLOAD.value: "确认后下载",
-    UpdatePolicy.AUTO_DOWNLOAD.value: "自动下载",
-    UpdatePolicy.AUTO_INSTALL.value: "自动下载并安装",
-    UpdatePolicy.IGNORE.value: "忽略更新",
+    "inherit": tr('ui.pages.updates.inherit_global'),
+    UpdatePolicy.MANUAL.value: tr('ui.pages.updates.manual_check_only'),
+    UpdatePolicy.NOTIFY.value: tr('ui.pages.updates.update_alerts'),
+    UpdatePolicy.CONFIRM_DOWNLOAD.value: tr('ui.pages.updates.download_after_confirmation'),
+    UpdatePolicy.AUTO_DOWNLOAD.value: tr('ui.pages.updates.auto_download'),
+    UpdatePolicy.AUTO_INSTALL.value: tr('ui.pages.updates.auto_download_and_install'),
+    UpdatePolicy.IGNORE.value: tr('ui.pages.updates.ignore_update'),
 }
 
 
 class UpdatesPage(BasePage):
-    title = "更新中心"
-    subtitle = "每个 Mod 可独立选择提醒、下载与安装策略；更新前自动备份"
+    title = tr('ui.pages.updates.update_center')
+    subtitle = tr('ui.pages.updates.each_mod_can_have_its_own_notify_download_and_instal_9d50b7')
 
     def __init__(self, controller, parent=None) -> None:  # type: ignore[no-untyped-def]
         super().__init__(controller, parent)
@@ -64,10 +65,10 @@ class UpdatesPage(BasePage):
         self.body = QStackedWidget()
         outer.addWidget(self.body, 1)
         self.empty = EmptyState(
-            "尚未选择游戏",
-            "添加游戏并关联 Nexus 后，即可检查 Mod 更新。",
+            tr('ui.pages.updates.no_game_selected'),
+            tr('ui.pages.updates.after_adding_a_game_and_linking_nexus_you_can_check_dfedaf'),
             "update",
-            make_button("前往游戏管理", icon_name="gamepad", variant="primary", on_click=lambda: self.controller.go_to("GamesPage")),
+            make_button(tr('ui.pages.updates.go_to_game_management'), icon_name="gamepad", variant="primary", on_click=lambda: self.controller.go_to("GamesPage")),
         )
         self.body.addWidget(self.empty)
         content = QWidget()
@@ -79,7 +80,7 @@ class UpdatesPage(BasePage):
         settings_card = Card()
         settings_row = QHBoxLayout()
         settings_row.setSpacing(10)
-        label = QLabel("全局更新策略")
+        label = QLabel(tr('ui.pages.updates.global_update_policy'))
         label.setStyleSheet("font-weight: 650;")
         settings_row.addWidget(label)
         self.global_policy = QComboBox()
@@ -88,7 +89,7 @@ class UpdatesPage(BasePage):
         self.global_policy.currentIndexChanged.connect(self._global_policy_changed)
         settings_row.addWidget(self.global_policy)
         self.check_all_button = make_button(
-            "检查全部更新", icon_name="refresh", variant="primary", on_click=self.check_all
+            tr('ui.pages.updates.check_all_updates'), icon_name="refresh", variant="primary", on_click=self.check_all
         )
         settings_row.addWidget(self.check_all_button)
         settings_row.addStretch(1)
@@ -97,8 +98,7 @@ class UpdatesPage(BasePage):
         settings_row.addWidget(self.schedule_label)
         settings_card.add_layout(settings_row)
         self.policy_hint = QLabel(
-            "自动下载/安装仅通过 Nexus 官方 API 获取文件；非 Premium 账号可能需要在网页下载后导入。"
-            "更新前会备份受影响目录，安装后会校验版本。"
+            tr('ui.pages.updates.auto_download_install_only_fetches_files_through_the_febce1')
         )
         self.policy_hint.setObjectName("Muted")
         self.policy_hint.setWordWrap(True)
@@ -108,36 +108,36 @@ class UpdatesPage(BasePage):
         splitter = QSplitter(Qt.Vertical)
         splitter.setChildrenCollapsible(False)
         table_card = Card()
-        table_header = SectionHeader("Mod 更新状态", "选择一行查看详情与更新历史")
+        table_header = SectionHeader(tr('ui.pages.updates.mod_update_status'), tr('ui.pages.updates.select_a_row_to_view_details_and_update_history'))
         filter_row = QHBoxLayout()
         self.search = QLineEdit()
-        self.search.setPlaceholderText("搜索 Mod…")
+        self.search.setPlaceholderText(tr('ui.pages.updates.search_mods'))
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self._apply_filter)
         filter_row.addWidget(self.search, 1)
         self.filter = QComboBox()
         for label, value in (
-            ("全部", "all"),
-            ("有更新", "available"),
-            ("最新", "current"),
-            ("检查失败", "error"),
-            ("已忽略", "ignored"),
-            ("已锁定", "pinned"),
+            (tr('ui.pages.updates.all'), "all"),
+            (tr('ui.pages.updates.update_available'), "available"),
+            (tr('ui.pages.updates.latest'), "current"),
+            (tr('ui.pages.updates.check_failed'), "error"),
+            (tr('ui.pages.updates.ignored'), "ignored"),
+            (tr('ui.pages.updates.locked'), "pinned"),
         ):
             self.filter.addItem(label, value)
         self.filter.currentIndexChanged.connect(self._apply_filter)
         filter_row.addWidget(self.filter)
         self.refresh_button = make_button(
-            "刷新", icon_name="refresh", variant="tool", on_click=self.refresh
+            tr('ui.pages.updates.refresh'), icon_name="refresh", variant="tool", on_click=self.refresh
         )
         filter_row.addWidget(self.refresh_button)
-        table_header.add_action(make_button("前往下载中心", icon_name="download", on_click=lambda: self.controller.go_to("DownloadsPage")))
+        table_header.add_action(make_button(tr('ui.pages.updates.go_to_download_center'), icon_name="download", on_click=lambda: self.controller.go_to("DownloadsPage")))
         table_card.add(table_header)
         table_card.add_layout(filter_row)
         self.table = QTableWidget()
         setup_table(
             self.table,
-            ["Mod", "当前版本", "最新版本", "更新策略", "状态", "版本锁定"],
+            ["Mod", tr('ui.pages.updates.current_version'), tr('ui.pages.updates.latest_version'), tr('ui.pages.updates.update_policy'), tr('ui.pages.updates.status'), tr('ui.pages.updates.version_lock')],
             stretch_column=0,
             row_height=38,
         )
@@ -147,10 +147,10 @@ class UpdatesPage(BasePage):
 
         details_wrapper, details_layout = make_scroll_content(splitter)
         details_card = Card()
-        self.details_title = QLabel("选择一个 Mod")
+        self.details_title = QLabel(tr('ui.pages.updates.select_a_mod'))
         self.details_title.setStyleSheet("font-size: 17px; font-weight: 700;")
         details_card.add(self.details_title)
-        self.details_status = QLabel("查看可选更新、更新历史与回滚。")
+        self.details_status = QLabel(tr('ui.pages.updates.view_available_updates_update_history_and_rollback'))
         self.details_status.setWordWrap(True)
         self.details_status.setObjectName("Muted")
         details_card.add(self.details_status)
@@ -158,7 +158,7 @@ class UpdatesPage(BasePage):
         self.badges_layout = badges
         details_card.add_layout(badges)
         policy_row = QHBoxLayout()
-        policy_label = QLabel("此 Mod 的策略")
+        policy_label = QLabel(tr('ui.pages.updates.policy_for_this_mod'))
         policy_label.setObjectName("Muted")
         policy_row.addWidget(policy_label)
         self.mod_policy = QComboBox()
@@ -170,12 +170,12 @@ class UpdatesPage(BasePage):
         details_card.add_layout(policy_row)
         actions = QHBoxLayout()
         actions.setSpacing(6)
-        self.check_button = make_button("检查选中", icon_name="refresh", on_click=self.check_selected)
-        self.download_button = make_button("下载更新", icon_name="download", on_click=self.download_selected)
-        self.install_button = make_button("安装已下载", icon_name="package", variant="primary", on_click=self.install_downloaded)
-        self.pin_button = make_button("锁定当前版本", icon_name="shield", on_click=self.toggle_pin)
-        self.ignore_button = make_button("忽略版本", icon_name="x", on_click=self.ignore_selected)
-        self.rollback_button = make_button("回滚最近更新", icon_name="backup", variant="danger", on_click=self.rollback_selected)
+        self.check_button = make_button(tr('ui.pages.updates.check_selected'), icon_name="refresh", on_click=self.check_selected)
+        self.download_button = make_button(tr('ui.pages.updates.download_update'), icon_name="download", on_click=self.download_selected)
+        self.install_button = make_button(tr('ui.pages.updates.install_downloaded'), icon_name="package", variant="primary", on_click=self.install_downloaded)
+        self.pin_button = make_button(tr('ui.pages.updates.lock_version'), icon_name="shield", on_click=self.toggle_pin)
+        self.ignore_button = make_button(tr('ui.pages.updates.ignore_version'), icon_name="x", on_click=self.ignore_selected)
+        self.rollback_button = make_button(tr('ui.pages.updates.roll_back_latest_update'), icon_name="backup", variant="danger", on_click=self.rollback_selected)
         for button in (
             self.check_button,
             self.download_button,
@@ -190,12 +190,12 @@ class UpdatesPage(BasePage):
         self.action_hint.setWordWrap(True)
         self.action_hint.setObjectName("Muted")
         details_card.add(self.action_hint)
-        history_header = SectionHeader("更新历史", "最近 50 条记录")
+        history_header = SectionHeader(tr('ui.pages.updates.update_history'), tr('ui.pages.updates.last_50_records'))
         details_card.add(history_header)
         self.history_table = QTableWidget()
         setup_table(
             self.history_table,
-            ["时间", "变更", "状态", "说明"],
+            [tr('ui.pages.updates.time'), tr('ui.pages.updates.change'), tr('ui.pages.updates.status'), tr('ui.pages.updates.details')],
             stretch_column=3,
             row_height=32,
         )
@@ -218,14 +218,14 @@ class UpdatesPage(BasePage):
         self.global_policy.blockSignals(False)
         hours = self.services.config.config.update_check_interval_hours
         self.schedule_label.setText(
-            "自动检查已关闭" if hours <= 0 else f"每 {hours} 小时自动检查"
+            tr('ui.pages.updates.auto_check_is_off') if hours <= 0 else tr('ui.pages.updates.auto_check_every_0_hours', hours)
         )
         selected_id = self._selected.id if self._selected else None
         try:
             self._all_mods = [view for view in self.services.mods.list_mods(self.game_id) if view.is_present]
             self._history = self.services.updates.history(self.game_id)
         except Exception as exc:
-            log.exception("读取更新信息失败")
+            log.exception(tr('ui.pages.updates.failed_to_read_update_information'))
             self.error(str(exc))
             return
         self._by_id = {mod.id: mod for mod in self._all_mods}
@@ -271,13 +271,13 @@ class UpdatesPage(BasePage):
             policy = POLICY_LABELS.get(mod.update_policy, mod.update_policy)
             self.table.setItem(row, 3, cell(policy))
             status_text = {
-                UpdateStatus.AVAILABLE: f"可更新 {mod.latest_version or ''}".strip(),
-                UpdateStatus.UP_TO_DATE: "最新",
-                UpdateStatus.ERROR: "检查失败",
-                UpdateStatus.IGNORED: "已忽略",
-                UpdateStatus.DOWNLOADED: "已下载",
-                UpdateStatus.UNKNOWN: "未检查",
-            }.get(mod.update_status, "未检查")
+                UpdateStatus.AVAILABLE: tr('ui.pages.updates.update_to_0', mod.latest_version or '').strip(),
+                UpdateStatus.UP_TO_DATE: tr('ui.pages.updates.latest'),
+                UpdateStatus.ERROR: tr('ui.pages.updates.check_failed'),
+                UpdateStatus.IGNORED: tr('ui.pages.updates.ignored'),
+                UpdateStatus.DOWNLOADED: tr('ui.pages.updates.downloaded'),
+                UpdateStatus.UNKNOWN: tr('ui.pages.updates.not_checked'),
+            }.get(mod.update_status, tr('ui.pages.updates.not_checked'))
             item = cell(status_text, tooltip=mod.update_error or "")
             item.setForeground(
                 QColor(
@@ -333,30 +333,30 @@ class UpdatesPage(BasePage):
             button.setEnabled(enabled)
         clear_layout(self.badges_layout)
         if mod is None:
-            self.details_title.setText("选择一个 Mod")
-            self.details_status.setText("查看可选更新、更新历史与回滚。")
+            self.details_title.setText(tr('ui.pages.updates.select_a_mod'))
+            self.details_status.setText(tr('ui.pages.updates.view_available_updates_update_history_and_rollback'))
             self.action_hint.setText("")
             clear_table(self.history_table)
             return
         self.details_title.setText(mod.name)
         self.details_status.setText(
-            f"{mod.version} → {mod.latest_version or '未知'} · Nexus ID {mod.nexus_mod_id or '未关联'}"
+            f"{mod.version} → {mod.latest_version or tr('ui.pages.updates.unknown')} · Nexus ID {mod.nexus_mod_id or tr('ui.pages.updates.not_linked')}"
         )
         if mod.update_status is UpdateStatus.AVAILABLE:
-            self.badges_layout.addWidget(Badge("有可用更新", "warning"))
+            self.badges_layout.addWidget(Badge(tr('ui.pages.updates.updates_available'), "warning"))
         if mod.pinned_version:
-            self.badges_layout.addWidget(Badge(f"锁定 {mod.pinned_version}", "info"))
+            self.badges_layout.addWidget(Badge(tr('ui.pages.updates.lock_0', mod.pinned_version), "info"))
         if mod.ignored_version:
-            self.badges_layout.addWidget(Badge(f"忽略 {mod.ignored_version}", "muted"))
+            self.badges_layout.addWidget(Badge(tr('ui.pages.updates.ignore_0', mod.ignored_version), "muted"))
         if not mod.nexus_mod_id:
-            self.badges_layout.addWidget(Badge("未关联 Nexus", "danger"))
+            self.badges_layout.addWidget(Badge(tr('ui.pages.updates.not_linked_to_nexus'), "danger"))
         self.badges_layout.addStretch(1)
         self.mod_policy.blockSignals(True)
         index = self.mod_policy.findData(mod.update_policy or "inherit")
         self.mod_policy.setCurrentIndex(max(0, index))
         self.mod_policy.blockSignals(False)
-        self.pin_button.setText("解除版本锁定" if mod.pinned_version else "锁定当前版本")
-        self.ignore_button.setText("清除忽略" if mod.ignored_version else "忽略此版本")
+        self.pin_button.setText(tr('ui.pages.updates.unlock_version') if mod.pinned_version else tr('ui.pages.updates.lock_version'))
+        self.ignore_button.setText(tr('ui.pages.updates.clear_ignore') if mod.ignored_version else tr('ui.pages.updates.ignore_version_aebc24'))
         self.check_button.setEnabled(bool(mod.nexus_mod_id))
         self.download_button.setEnabled(mod.update_status is UpdateStatus.AVAILABLE)
         self.rollback_button.setEnabled(True)
@@ -365,12 +365,12 @@ class UpdatesPage(BasePage):
             self.action_hint.setText(mod.update_error)
         elif mod.update_status is UpdateStatus.AVAILABLE:
             self.action_hint.setText(
-                f"可下载 {mod.latest_file_name or '最新文件'}。更新将备份当前文件夹并校验安装后的版本。"
+                tr('ui.pages.updates.0_is_available_to_download_the_update_will_back_up_t_b65afc', mod.latest_file_name or tr('ui.pages.updates.latest_file'))
             )
         elif mod.update_status is UpdateStatus.UP_TO_DATE:
-            self.action_hint.setText("当前版本已是最新，或已锁定版本。")
+            self.action_hint.setText(tr('ui.pages.updates.the_current_version_is_up_to_date_or_the_version_is_1229a5'))
         else:
-            self.action_hint.setText("点击“检查选中”从 Nexus 获取最新版本信息。")
+            self.action_hint.setText(tr('ui.pages.updates.click_check_selected_to_get_the_latest_version_info_5825c1'))
         self._render_history(mod)
 
     def _render_history(self, mod: ModView) -> None:
@@ -381,11 +381,11 @@ class UpdatesPage(BasePage):
             self.history_table.setItem(row, 0, cell(record.created_at.strftime("%Y-%m-%d %H:%M")))
             self.history_table.setItem(row, 1, cell(f"{record.old_version} → {record.new_version}"))
             status_map = {
-                "available": "可用",
-                "downloading": "下载中",
-                "installed": "已安装",
-                "failed": "失败",
-                "rolled_back": "已回滚",
+                "available": tr('ui.pages.updates.available'),
+                "downloading": tr('ui.pages.updates.downloading'),
+                "installed": tr('ui.pages.updates.installed'),
+                "failed": tr('ui.pages.updates.failed'),
+                "rolled_back": tr('ui.pages.updates.rolled_back'),
             }
             self.history_table.setItem(row, 2, cell(status_map.get(record.status, record.status)))
             self.history_table.setItem(row, 3, cell(record.message, tooltip=record.message))
@@ -416,7 +416,7 @@ class UpdatesPage(BasePage):
         except Exception as exc:
             self.error(str(exc))
             return
-        self.toast(f"全局更新策略已设为：{self.global_policy.currentText()}", "success")
+        self.toast(tr('ui.pages.updates.global_update_policy_set_to_0', self.global_policy.currentText()), "success")
         self.refresh()
 
     def _mod_policy_changed(self) -> None:
@@ -435,13 +435,13 @@ class UpdatesPage(BasePage):
         if game_id is None:
             return
         if not self.services.nexus_configured:
-            self.error("请先在设置中配置 Nexus API Key。")
+            self.error(tr('ui.pages.updates.please_configure_the_nexus_api_key_in_settings_first'))
             return
         self.check_all_button.setEnabled(False)
-        self.check_all_button.setText("检查中…")
-        self.policy_hint.setText("正在检查更新…")
+        self.check_all_button.setText(tr('ui.pages.updates.checking'))
+        self.policy_hint.setText(tr('ui.pages.updates.checking_for_updates'))
         self.tasks.run(
-            "检查全部更新",
+            tr('ui.pages.updates.check_all_updates'),
             lambda progress_cb: self.services.updates.check_all(game_id, progress_cb),
             with_progress=True,
             on_progress=lambda value, message: self.policy_hint.setText(message),
@@ -451,25 +451,25 @@ class UpdatesPage(BasePage):
 
     def _check_all_done(self, results) -> None:  # type: ignore[no-untyped-def]
         self.check_all_button.setEnabled(True)
-        self.check_all_button.setText("检查全部更新")
+        self.check_all_button.setText(tr('ui.pages.updates.check_all_updates'))
         available = sum(1 for result in results if result.status is UpdateStatus.AVAILABLE)
         errors = sum(1 for result in results if result.status is UpdateStatus.ERROR)
         self.toast(
-            f"检查完成：{available} 个可更新，{errors} 个失败。",
+            tr('ui.pages.updates.check_complete_0_updatable_1_failed', available, errors),
             "success" if not errors else "warning",
         )
         self.policy_hint.setText(
-            "自动下载任务已按各 Mod 策略加入下载队列。"
+            tr('ui.pages.updates.auto_download_tasks_have_been_added_to_the_download_24809b')
             if any(result.status is UpdateStatus.AVAILABLE for result in results)
-            else "当前没有可用更新。"
+            else tr('ui.pages.updates.no_updates_available')
         )
         self.refresh()
         self.controller.on_data_changed()
 
     def _check_all_failed(self, message: str) -> None:
         self.check_all_button.setEnabled(True)
-        self.check_all_button.setText("检查全部更新")
-        self.policy_hint.setText("检查更新失败。")
+        self.check_all_button.setText(tr('ui.pages.updates.check_all_updates'))
+        self.policy_hint.setText(tr('ui.pages.updates.failed_to_check_for_updates'))
         self.error(message)
 
     def check_selected(self) -> None:
@@ -477,19 +477,19 @@ class UpdatesPage(BasePage):
         if not mod:
             return
         if not mod.nexus_mod_id:
-            self.error("该 Mod 未关联 Nexus Mod ID。")
+            self.error(tr('ui.pages.updates.this_mod_is_not_linked_to_a_nexus_mod_id'))
             return
         self.check_button.setEnabled(False)
-        self.action_hint.setText("正在检查…")
+        self.action_hint.setText(tr('ui.pages.updates.checking_481ee2'))
 
         def done(result) -> None:  # type: ignore[no-untyped-def]
             self.check_button.setEnabled(True)
-            self.toast(result.message or "检查完成。", "success" if result.status is not UpdateStatus.ERROR else "danger")
+            self.toast(result.message or tr('ui.pages.updates.check_complete'), "success" if result.status is not UpdateStatus.ERROR else "danger")
             self.refresh()
             self.controller.on_data_changed()
 
         self.tasks.run(
-            "检查 Mod 更新",
+            tr('ui.pages.updates.check_mod_updates'),
             lambda: self.services.updates.check_mod(mod.id),
             on_done=done,
             on_error=lambda message: self._action_failed(message),
@@ -500,19 +500,19 @@ class UpdatesPage(BasePage):
         if not mod:
             return
         if not self.services.nexus_configured:
-            self.error("请先配置 Nexus API Key。")
+            self.error(tr('ui.pages.updates.please_configure_the_nexus_api_key_first'))
             return
         self.download_button.setEnabled(False)
-        self.action_hint.setText("正在创建下载任务…")
+        self.action_hint.setText(tr('ui.pages.updates.creating_download_task'))
 
         def done(download_id) -> None:  # type: ignore[no-untyped-def]
-            self.action_hint.setText("下载任务已加入下载中心。")
-            self.toast("下载任务已加入队列。", "success")
+            self.action_hint.setText(tr('ui.pages.updates.download_task_added_to_download_center'))
+            self.toast(tr('ui.pages.updates.download_task_queued'), "success")
             self.refresh()
             self.controller.on_data_changed()
 
         self.tasks.run(
-            "下载 Mod 更新",
+            tr('ui.pages.updates.download_mod_updates'),
             lambda: self.services.updates.download_update(mod.id),
             on_done=done,
             on_error=lambda message: self._action_failed(message),
@@ -533,25 +533,24 @@ class UpdatesPage(BasePage):
             None,
         )
         if completed is None:
-            self.error("没有找到已完成的更新下载。请先下载更新。")
+            self.error(tr('ui.pages.updates.no_completed_update_downloads_found_please_download_25ee37'))
             return
         if not self.confirm(
-            "安装更新",
-            f"将 {mod.name} 从 {mod.version} 更新到 {mod.latest_version}。\n\n"
-            "安装前自动备份，安装后校验版本；依赖不满足时会阻止安装。",
+            tr('ui.pages.updates.install_update'),
+            tr('ui.pages.updates.update_0_from_1_to_2_a_backup_is_created_automatical_7e42ce', mod.name, mod.version, mod.latest_version),
         ):
             return
         self.install_button.setEnabled(False)
-        self.action_hint.setText("正在安装更新…")
+        self.action_hint.setText(tr('ui.pages.updates.installing_updates'))
 
         def done(_result) -> None:  # type: ignore[no-untyped-def]
             self.install_button.setEnabled(True)
-            self.toast(f"{mod.name} 更新完成。", "success")
+            self.toast(tr('ui.pages.updates.0_updated', mod.name), "success")
             self.refresh()
             self.controller.on_data_changed()
 
         self.tasks.run(
-            "安装更新",
+            tr('ui.pages.updates.install_update'),
             lambda: self.services.updates.install_update_from_download(completed.id),
             on_done=done,
             on_error=lambda message: self._action_failed(message),
@@ -564,10 +563,10 @@ class UpdatesPage(BasePage):
         try:
             if mod.pinned_version:
                 self.services.mods.set_pinned_version(mod.id, None)
-                self.toast("已解除版本锁定。", "success")
+                self.toast(tr('ui.pages.updates.version_unlocked'), "success")
             else:
                 self.services.mods.set_pinned_version(mod.id, mod.version)
-                self.toast(f"已锁定版本 {mod.version}。", "success")
+                self.toast(tr('ui.pages.updates.version_0_locked', mod.version), "success")
         except Exception as exc:
             self.error(str(exc))
             return
@@ -580,12 +579,12 @@ class UpdatesPage(BasePage):
         try:
             if mod.ignored_version:
                 self.services.mods.clear_update_ignore(mod.id)
-                self.toast("已清除忽略版本。", "success")
+                self.toast(tr('ui.pages.updates.ignored_version_cleared'), "success")
             elif mod.latest_version:
                 self.services.mods.ignore_version(mod.id, mod.latest_version)
-                self.toast(f"已忽略版本 {mod.latest_version}。", "success")
+                self.toast(tr('ui.pages.updates.version_0_ignored', mod.latest_version), "success")
             else:
-                self.toast("请先检查更新，再忽略具体版本。", "warning")
+                self.toast(tr('ui.pages.updates.please_check_for_updates_before_ignoring_a_specific_b26063'), "warning")
         except Exception as exc:
             self.error(str(exc))
             return
@@ -596,8 +595,8 @@ class UpdatesPage(BasePage):
         if not mod:
             return
         if not self.confirm(
-            "回滚更新",
-            f"将 {mod.name} 恢复到最近一次更新前备份？\n\n回滚本身也会先创建安全备份。",
+            tr('ui.pages.updates.roll_back_update'),
+            tr('ui.pages.updates.restore_0_to_the_backup_made_before_the_most_recent_4f7d4f', mod.name),
             danger=True,
         ):
             return
@@ -605,12 +604,12 @@ class UpdatesPage(BasePage):
 
         def done(_result) -> None:  # type: ignore[no-untyped-def]
             self.rollback_button.setEnabled(True)
-            self.toast(f"{mod.name} 已回滚。", "success")
+            self.toast(tr('ui.pages.updates.0_rolled_back', mod.name), "success")
             self.refresh()
             self.controller.on_data_changed()
 
         self.tasks.run(
-            "回滚更新",
+            tr('ui.pages.updates.roll_back_update'),
             lambda: self.services.updates.rollback_last_update(mod.id),
             on_done=done,
             on_error=lambda message: self._action_failed(message),

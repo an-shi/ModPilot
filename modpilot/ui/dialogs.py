@@ -22,6 +22,7 @@ from .widgets import (
     make_scroll_content,
     setup_table,
 )
+from ..i18n import tr
 
 
 class DialogBase(QDialog):
@@ -53,9 +54,9 @@ class DialogBase(QDialog):
 
 class InstallPreviewDialog(DialogBase):
     def __init__(self, plan: InstallPlan, parent: QWidget | None = None) -> None:
-        super().__init__(parent, "确认安装 Mod", 760, 560)
+        super().__init__(parent, tr('ui.dialogs.confirm_mod_installation'), 760, 560)
         warn = QLabel(
-            "安装前会对被替换的文件夹创建 ZIP 备份。你可以随时在备份管理中恢复。"
+            tr('ui.dialogs.a_zip_backup_of_the_replaced_folders_is_created_befo_520aa8')
         )
         warn.setObjectName("Muted")
         warn.setWordWrap(True)
@@ -67,7 +68,7 @@ class InstallPreviewDialog(DialogBase):
             name.setStyleSheet("font-weight: 650; font-size: 14px;")
             card.add(name)
             meta = QLabel(
-                f"UniqueID: {entry.metadata.unique_id}\n目标文件夹: {entry.destination_name}"
+                tr('ui.dialogs.uniqueid_0_target_folder_1', entry.metadata.unique_id, entry.destination_name)
             )
             meta.setObjectName("Muted")
             meta.setWordWrap(True)
@@ -84,8 +85,8 @@ class InstallPreviewDialog(DialogBase):
             content.addWidget(label)
         content.addStretch(1)
         self.add(scroll_wrapper, 1)
-        cancel = make_button("取消", on_click=self.reject)
-        install = make_button("备份并安装", icon_name="download", variant="primary", on_click=self.accept)
+        cancel = make_button(tr('ui.dialogs.cancel'), on_click=self.reject)
+        install = make_button(tr('ui.dialogs.backup_and_install'), icon_name="download", variant="primary", on_click=self.accept)
         self.add_buttons(cancel, install)
 
 
@@ -98,14 +99,14 @@ class BackupsDialog(DialogBase):
         on_restore=None,  # type: ignore[no-untyped-def]
         on_delete=None,  # type: ignore[no-untyped-def]
     ) -> None:
-        super().__init__(parent, "备份管理", 860, 560)
+        super().__init__(parent, tr('ui.dialogs.backup_management'), 860, 560)
         self._backups = backups
         self._on_restore = on_restore
         self._on_delete = on_delete
         self.table = QTableWidget()
         setup_table(
             self.table,
-            ["创建时间", "类型", "标签", "大小", "状态"],
+            [tr('ui.dialogs.created'), tr('ui.dialogs.type'), tr('ui.dialogs.tag'), tr('ui.dialogs.size'), tr('ui.dialogs.status')],
             stretch_column=2,
             row_height=36,
         )
@@ -116,16 +117,16 @@ class BackupsDialog(DialogBase):
             self.table.setItem(row, 1, cell(backup.kind.label))
             self.table.setItem(row, 2, cell(backup.label, tooltip=backup.note or backup.path))
             self.table.setItem(row, 3, cell(human_size(backup.size_bytes)))
-            self.table.setItem(row, 4, cell("可用" if backup.status == "available" else backup.status))
+            self.table.setItem(row, 4, cell(tr('ui.dialogs.available') if backup.status == "available" else backup.status))
         self.table.doubleClicked.connect(lambda _index: self.restore())
         self.add(self.table, 1)
         if not backups:
-            empty = QLabel("暂无备份。安装、更新、卸载或汉化时会自动创建备份。")
+            empty = QLabel(tr('ui.dialogs.no_backups_yet_backups_are_created_automatically_whe_fede96'))
             empty.setObjectName("Muted")
             self.add(empty)
-        close = make_button("关闭", on_click=self.reject)
-        delete = make_button("删除备份", icon_name="trash", variant="danger", on_click=self.delete)
-        restore = make_button("恢复选中备份", icon_name="backup", variant="primary", on_click=self.restore)
+        close = make_button(tr('ui.dialogs.close'), on_click=self.reject)
+        delete = make_button(tr('ui.dialogs.delete_backup'), icon_name="trash", variant="danger", on_click=self.delete)
+        restore = make_button(tr('ui.dialogs.restore_selected_backup'), icon_name="backup", variant="primary", on_click=self.restore)
         delete.setEnabled(bool(backups and on_delete))
         restore.setEnabled(bool(backups and on_restore))
         self.add_buttons(delete, restore, close)
@@ -156,7 +157,7 @@ class BackupsDialog(DialogBase):
 
 
 class RawLogDialog(DialogBase):
-    def __init__(self, text: str, parent: QWidget | None = None, title: str = "原始日志") -> None:
+    def __init__(self, text: str, parent: QWidget | None = None, title: str = tr('ui.dialogs.raw_log')) -> None:
         super().__init__(parent, title, 980, 700)
         editor = QPlainTextEdit()
         editor.setReadOnly(True)
@@ -166,8 +167,8 @@ class RawLogDialog(DialogBase):
         font.setPointSize(9)
         editor.setFont(font)
         self.add(editor, 1)
-        copy = make_button("复制全部", icon_name="save", on_click=lambda: self._copy(editor))
-        close = make_button("关闭", variant="primary", on_click=self.reject)
+        copy = make_button(tr('ui.dialogs.copy_all'), icon_name="save", on_click=lambda: self._copy(editor))
+        close = make_button(tr('ui.dialogs.close'), variant="primary", on_click=self.reject)
         self.add_buttons(copy, close)
 
     @staticmethod
@@ -184,10 +185,9 @@ class TranslationPackDialog(DialogBase):
         warnings: list[str],
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(parent, "可用汉化包候选", 980, 640)
+        super().__init__(parent, tr('ui.dialogs.translation_pack_candidates'), 980, 640)
         intro = QLabel(
-            "候选来源为 Nexus Mods / GitHub 的公开搜索。ModPilot 只根据名称、UniqueID、Nexus ID 与关键词进行匹配，"
-            "不会自动断言汉化包完全兼容。请核对版本后打开网页下载，再通过“导入汉化包”应用。"
+            tr('ui.dialogs.candidates_come_from_public_searches_on_nexus_mods_g_e089ef')
         )
         intro.setWordWrap(True)
         intro.setObjectName("Muted")
@@ -200,7 +200,7 @@ class TranslationPackDialog(DialogBase):
         self.table = QTableWidget()
         setup_table(
             self.table,
-            ["来源", "标题", "兼容性", "作者", "更新时间"],
+            [tr('ui.dialogs.source'), tr('ui.dialogs.title'), tr('ui.dialogs.compatibility'), tr('ui.dialogs.author'), tr('ui.dialogs.update_time')],
             stretch_column=1,
             row_height=36,
         )
@@ -215,12 +215,12 @@ class TranslationPackDialog(DialogBase):
         self.table.doubleClicked.connect(lambda _index: self.open_selected())
         self.add(self.table, 1)
         if not candidates:
-            empty = QLabel("没有找到候选汉化包。仍可使用 AI 翻译或导入本地汉化文件。")
+            empty = QLabel(tr('ui.dialogs.no_candidate_translation_packs_found_you_can_still_u_cc9913'))
             empty.setObjectName("Muted")
             self.add(empty)
-        open_button = make_button("打开选中页面", icon_name="external", on_click=self.open_selected)
+        open_button = make_button(tr('ui.dialogs.open_selected_page'), icon_name="external", on_click=self.open_selected)
         open_button.setEnabled(bool(candidates))
-        close = make_button("关闭", variant="primary", on_click=self.reject)
+        close = make_button(tr('ui.dialogs.close'), variant="primary", on_click=self.reject)
         self.add_buttons(open_button, close)
 
     def _selected_candidate(self) -> TranslationCandidate | None:

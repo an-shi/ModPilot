@@ -27,13 +27,14 @@ from ..widgets import (
     setup_table,
 )
 from .base import BasePage
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
 
 class ProfilesPage(BasePage):
-    title = "配置档"
-    subtitle = "保存、导入和快速切换多套 Mod 启用方案（不复制 Mod 文件）"
+    title = tr('ui.pages.profiles.profile')
+    subtitle = tr('ui.pages.profiles.save_import_and_quickly_switch_between_multiple_mod_05c592')
 
     def __init__(self, controller, parent=None) -> None:  # type: ignore[no-untyped-def]
         super().__init__(controller, parent)
@@ -45,10 +46,10 @@ class ProfilesPage(BasePage):
         self.body = QStackedWidget()
         outer.addWidget(self.body, 1)
         self.empty = EmptyState(
-            "尚未选择游戏",
-            "添加游戏后可创建配置档，保存当前 Mod 启用状态。",
+            tr('ui.pages.profiles.no_game_selected'),
+            tr('ui.pages.profiles.after_adding_a_game_you_can_create_profiles_to_save_edd652'),
             "profiles",
-            make_button("前往游戏管理", icon_name="gamepad", variant="primary", on_click=lambda: self.controller.go_to("GamesPage")),
+            make_button(tr('ui.pages.profiles.go_to_game_management'), icon_name="gamepad", variant="primary", on_click=lambda: self.controller.go_to("GamesPage")),
         )
         self.body.addWidget(self.empty)
 
@@ -62,28 +63,27 @@ class ProfilesPage(BasePage):
         row = QHBoxLayout()
         row.setSpacing(8)
         self.create_button = make_button(
-            "保存当前为配置档", icon_name="plus", variant="primary", on_click=self.create_profile
+            tr('ui.pages.profiles.save_current_as_profile'), icon_name="plus", variant="primary", on_click=self.create_profile
         )
         row.addWidget(self.create_button)
-        self.apply_button = make_button("应用选中", icon_name="play", on_click=self.apply_profile)
+        self.apply_button = make_button(tr('ui.pages.profiles.apply_selected'), icon_name="play", on_click=self.apply_profile)
         row.addWidget(self.apply_button)
-        self.rename_button = make_button("重命名", icon_name="edit", on_click=self.rename_profile)
+        self.rename_button = make_button(tr('ui.pages.profiles.rename'), icon_name="edit", on_click=self.rename_profile)
         row.addWidget(self.rename_button)
-        self.duplicate_button = make_button("复制", icon_name="profiles", on_click=self.duplicate_profile)
+        self.duplicate_button = make_button(tr('ui.pages.profiles.copy'), icon_name="profiles", on_click=self.duplicate_profile)
         row.addWidget(self.duplicate_button)
-        self.export_button = make_button("导出", icon_name="download", on_click=self.export_profile)
+        self.export_button = make_button(tr('ui.pages.profiles.export'), icon_name="download", on_click=self.export_profile)
         row.addWidget(self.export_button)
-        self.import_button = make_button("导入", icon_name="folder", on_click=self.import_profile)
+        self.import_button = make_button(tr('ui.pages.profiles.import'), icon_name="folder", on_click=self.import_profile)
         row.addWidget(self.import_button)
-        self.delete_button = make_button("删除", icon_name="trash", variant="danger", on_click=self.delete_profile)
+        self.delete_button = make_button(tr('ui.pages.profiles.delete'), icon_name="trash", variant="danger", on_click=self.delete_profile)
         row.addWidget(self.delete_button)
         row.addStretch(1)
-        self.refresh_button = make_button("刷新", icon_name="refresh", variant="tool", on_click=self.refresh)
+        self.refresh_button = make_button(tr('ui.pages.profiles.refresh'), icon_name="refresh", variant="tool", on_click=self.refresh)
         row.addWidget(self.refresh_button)
         toolbar.add_layout(row)
         hint = QLabel(
-            "配置档记录每个 Mod 的启用状态和版本。应用时只会切换配置档中列出的 Mod；"
-            "未在配置档中的新 Mod 保持当前状态。缺失的 Mod 不会自动下载。"
+            tr('ui.pages.profiles.a_profile_records_the_enabled_state_and_version_of_e_328da9')
         )
         hint.setObjectName("Muted")
         hint.setWordWrap(True)
@@ -93,9 +93,9 @@ class ProfilesPage(BasePage):
         splitter = QSplitter(Qt.Vertical)
         splitter.setChildrenCollapsible(False)
         table_card = Card()
-        table_card.add(SectionHeader("配置档列表", "点击查看条目"))
+        table_card.add(SectionHeader(tr('ui.pages.profiles.profile_list'), tr('ui.pages.profiles.click_to_view_entries')))
         self.profiles_hint = QLabel(
-            "还没有配置档。点击“保存当前为配置档”记录当前 Mod 的启用状态，之后可一键切换。"
+            tr('ui.pages.profiles.no_profiles_yet_click_save_current_as_profile_to_rec_9906ca')
         )
         self.profiles_hint.setObjectName("Muted")
         self.profiles_hint.setWordWrap(True)
@@ -103,7 +103,7 @@ class ProfilesPage(BasePage):
         self.table = QTableWidget()
         setup_table(
             self.table,
-            ["名称", "Mod 数", "启用数", "状态", "创建时间"],
+            [tr('ui.pages.profiles.name'), tr('ui.pages.profiles.mod_count'), tr('ui.pages.profiles.enabled'), tr('ui.pages.profiles.status'), tr('ui.pages.profiles.created')],
             stretch_column=0,
             row_height=38,
         )
@@ -112,7 +112,7 @@ class ProfilesPage(BasePage):
         splitter.addWidget(table_card)
 
         entries_card = Card()
-        entries_header = SectionHeader("配置档条目", "版本不一致时会给出警告，但仍会应用启用状态")
+        entries_header = SectionHeader(tr('ui.pages.profiles.profile_entries'), tr('ui.pages.profiles.a_warning_appears_when_versions_differ_but_the_enabl_ae78ca'))
         self.entries_hint = QLabel("")
         self.entries_hint.setObjectName("Muted")
         entries_header.add_action(self.entries_hint)
@@ -120,7 +120,7 @@ class ProfilesPage(BasePage):
         self.entries_table = QTableWidget()
         setup_table(
             self.entries_table,
-            ["Mod", "配置档版本", "启用"],
+            ["Mod", tr('ui.pages.profiles.profile_version'), tr('ui.pages.profiles.enable')],
             stretch_column=0,
             row_height=34,
         )
@@ -141,7 +141,7 @@ class ProfilesPage(BasePage):
         try:
             self._profiles = self.services.profiles.list(self.game_id)
         except Exception as exc:
-            log.exception("读取配置档失败")
+            log.exception(tr('ui.pages.profiles.failed_to_read_profile'))
             self.error(str(exc))
             return
         self.table.blockSignals(True)
@@ -152,7 +152,7 @@ class ProfilesPage(BasePage):
             self.table.setItem(row, 0, cell(profile.name, data=profile.id, tooltip=profile.description))
             self.table.setItem(row, 1, cell(str(profile.mod_count)))
             self.table.setItem(row, 2, cell(str(profile.enabled_count)))
-            self.table.setItem(row, 3, cell("当前" if profile.is_active else "—"))
+            self.table.setItem(row, 3, cell(tr('ui.pages.profiles.current') if profile.is_active else "—"))
             self.table.setItem(row, 4, cell(profile.created_at.strftime("%Y-%m-%d %H:%M")))
         self.table.blockSignals(False)
         self.profiles_hint.setVisible(not self._profiles)
@@ -213,16 +213,16 @@ class ProfilesPage(BasePage):
             self.entries_table.insertRow(row)
             self.entries_table.setItem(row, 0, cell(entry.name, tooltip=entry.unique_id))
             self.entries_table.setItem(row, 1, cell(entry.version))
-            self.entries_table.setItem(row, 2, cell("启用" if entry.enabled else "禁用"))
-        self.entries_hint.setText(f"{len(snapshot.entries)} 个条目")
+            self.entries_table.setItem(row, 2, cell(tr('ui.pages.profiles.enable') if entry.enabled else tr('ui.pages.profiles.disable')))
+        self.entries_hint.setText(tr('ui.pages.profiles.0_entries', len(snapshot.entries)))
 
     def create_profile(self) -> None:
         if self.game_id is None:
             return
-        name, ok = QInputDialog.getText(self, "保存配置档", "配置档名称：")
+        name, ok = QInputDialog.getText(self, tr('ui.pages.profiles.save_profile'), tr('ui.pages.profiles.profile_name'))
         if not ok or not name.strip():
             return
-        description, _ = QInputDialog.getText(self, "配置档描述（可选）", "描述：")
+        description, _ = QInputDialog.getText(self, tr('ui.pages.profiles.profile_description_optional'), tr('ui.pages.profiles.description'))
         try:
             profile = self.services.profiles.create_from_current(
                 self.game_id, name.strip(), description.strip()
@@ -230,7 +230,7 @@ class ProfilesPage(BasePage):
         except Exception as exc:
             self.error(str(exc))
             return
-        self.toast(f"已创建配置档：{profile.name}", "success")
+        self.toast(tr('ui.pages.profiles.profile_created_0', profile.name), "success")
         self.refresh()
         self._select_profile(profile.id)
         self.controller.on_data_changed()
@@ -239,14 +239,13 @@ class ProfilesPage(BasePage):
         if self._selected is None:
             return
         if not self.confirm(
-            "应用配置档",
-            f"应用“{self._selected.name}”？\n\n"
-            "ModPilot 会启用/禁用配置档中列出的 Mod。未列出的 Mod 保持现状。",
+            tr('ui.pages.profiles.apply_profile'),
+            tr('ui.pages.profiles.apply_0_modpilot_enables_or_disables_the_mods_listed_badedd', self._selected.name),
         ):
             return
         profile = self._selected
         self.apply_button.setEnabled(False)
-        self.progress_label.setText("正在应用配置档…")
+        self.progress_label.setText(tr('ui.pages.profiles.applying_profile'))
 
         def progress(value: int, message: str) -> None:
             self.progress_label.setText(message)
@@ -254,12 +253,12 @@ class ProfilesPage(BasePage):
         def done(result) -> None:  # type: ignore[no-untyped-def]
             self.apply_button.setEnabled(True)
             self.progress_label.setText("")
-            message = f"已启用 {len(result.enabled)} 个、禁用 {len(result.disabled)} 个 Mod。"
+            message = tr('ui.pages.profiles.enabled_0_mods_and_disabled_1', len(result.enabled), len(result.disabled))
             if result.missing:
-                message += f"\n\n配置档中有 {len(result.missing)} 个 Mod 未安装：\n" + "\n".join(result.missing[:10])
+                message += tr('ui.pages.profiles.0_mods_in_this_profile_are_not_installed', len(result.missing)) + "\n".join(result.missing[:10])
             if result.warnings:
-                message += "\n\n注意：\n" + "\n".join(result.warnings[:10])
-            self.info(message, "配置档已应用")
+                message += tr('ui.pages.profiles.note') + "\n".join(result.warnings[:10])
+            self.info(message, tr('ui.pages.profiles.profile_applied'))
             self.refresh()
             self.controller.on_data_changed()
 
@@ -269,7 +268,7 @@ class ProfilesPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "应用配置档",
+            tr('ui.pages.profiles.apply_profile'),
             lambda progress_cb: self.services.profiles.apply(profile.id, progress_cb),
             with_progress=True,
             on_progress=progress,
@@ -280,7 +279,7 @@ class ProfilesPage(BasePage):
     def rename_profile(self) -> None:
         if self._selected is None:
             return
-        name, ok = QInputDialog.getText(self, "重命名配置档", "新名称：", text=self._selected.name)
+        name, ok = QInputDialog.getText(self, tr('ui.pages.profiles.rename_profile'), tr('ui.pages.profiles.new_name'), text=self._selected.name)
         if not ok or not name.strip():
             return
         try:
@@ -289,13 +288,13 @@ class ProfilesPage(BasePage):
             self.error(str(exc))
             return
         self.refresh()
-        self.toast("配置档已重命名。", "success")
+        self.toast(tr('ui.pages.profiles.profile_renamed'), "success")
 
     def duplicate_profile(self) -> None:
         if self._selected is None:
             return
         name, ok = QInputDialog.getText(
-            self, "复制配置档", "新配置档名称：", text=f"{self._selected.name} 副本"
+            self, tr('ui.pages.profiles.copy_profile'), tr('ui.pages.profiles.new_profile_name'), text=tr('ui.pages.profiles.0_copies', self._selected.name)
         )
         if not ok or not name.strip():
             return
@@ -306,13 +305,13 @@ class ProfilesPage(BasePage):
             return
         self.refresh()
         self._select_profile(profile.id)
-        self.toast("配置档已复制。", "success")
+        self.toast(tr('ui.pages.profiles.profile_copied'), "success")
 
     def export_profile(self) -> None:
         if self._selected is None:
             return
         default = self.services.paths.exports_dir / f"{self._selected.name}.json"
-        path, _ = QFileDialog.getSaveFileName(self, "导出配置档", str(default), "配置文件 (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, tr('ui.pages.profiles.export_profile'), str(default), tr('ui.pages.profiles.configuration_file_json'))
         if not path:
             return
         try:
@@ -320,12 +319,12 @@ class ProfilesPage(BasePage):
         except Exception as exc:
             self.error(str(exc))
             return
-        self.toast(f"配置档已导出：{destination}", "success")
+        self.toast(tr('ui.pages.profiles.profile_exported_0', destination), "success")
 
     def import_profile(self) -> None:
         if self.game_id is None:
             return
-        path, _ = QFileDialog.getOpenFileName(self, "导入配置档", "", "配置文件 (*.json)")
+        path, _ = QFileDialog.getOpenFileName(self, tr('ui.pages.profiles.import_profile'), "", tr('ui.pages.profiles.configuration_file_json'))
         if not path:
             return
         try:
@@ -335,14 +334,14 @@ class ProfilesPage(BasePage):
             return
         self.refresh()
         self._select_profile(profile.id)
-        self.toast(f"已导入配置档：{profile.name}", "success")
+        self.toast(tr('ui.pages.profiles.profile_imported_0', profile.name), "success")
 
     def delete_profile(self) -> None:
         if self._selected is None:
             return
         if not self.confirm(
-            "删除配置档",
-            f"删除“{self._selected.name}”？\n\n不会删除任何 Mod 文件。",
+            tr('ui.pages.profiles.delete_profile'),
+            tr('ui.pages.profiles.delete_0_no_mod_files_will_be_deleted', self._selected.name),
             danger=True,
         ):
             return
@@ -353,4 +352,4 @@ class ProfilesPage(BasePage):
             return
         self._selected = None
         self.refresh()
-        self.toast("配置档已删除。", "success")
+        self.toast(tr('ui.pages.profiles.profile_deleted'), "success")

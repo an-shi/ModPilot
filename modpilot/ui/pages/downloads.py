@@ -35,6 +35,7 @@ from ..widgets import (
     setup_table,
 )
 from .base import BasePage
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -46,8 +47,8 @@ def _strip_html(text: str) -> str:
 
 
 class DownloadsPage(BasePage):
-    title = "下载中心"
-    subtitle = "通过 Nexus Mod ID 获取详情、文件并管理下载任务"
+    title = tr('ui.pages.downloads.download_center')
+    subtitle = tr('ui.pages.downloads.fetch_details_and_files_via_nexus_mod_id_and_manage_15bef5')
 
     def __init__(self, controller, parent=None) -> None:  # type: ignore[no-untyped-def]
         super().__init__(controller, parent)
@@ -63,10 +64,10 @@ class DownloadsPage(BasePage):
         self.body = QStackedWidget()
         outer.addWidget(self.body, 1)
         self.empty = EmptyState(
-            "尚未选择游戏",
-            "添加游戏后才能使用 Nexus 下载中心。",
+            tr('ui.pages.downloads.no_game_selected'),
+            tr('ui.pages.downloads.add_a_game_to_use_the_nexus_download_center'),
             "download",
-            make_button("前往游戏管理", icon_name="gamepad", variant="primary", on_click=lambda: self.controller.go_to("GamesPage")),
+            make_button(tr('ui.pages.downloads.go_to_game_management'), icon_name="gamepad", variant="primary", on_click=lambda: self.controller.go_to("GamesPage")),
         )
         self.body.addWidget(self.empty)
 
@@ -78,7 +79,7 @@ class DownloadsPage(BasePage):
 
         self.api_banner = Card()
         banner_row = QHBoxLayout()
-        banner_text = QLabel("尚未配置 Nexus API Key。可以浏览说明和导入本地压缩包，但无法通过 API 下载。")
+        banner_text = QLabel(tr('ui.pages.downloads.no_nexus_api_key_is_configured_yet_you_can_browse_de_6d31ad'))
         banner_text.setWordWrap(True)
         banner_icon = QLabel()
         from ..theme import theme_colors
@@ -87,7 +88,7 @@ class DownloadsPage(BasePage):
         banner_row.addWidget(banner_icon, 0)
         banner_row.addWidget(banner_text, 1)
         banner_row.addWidget(
-            make_button("前往设置", icon_name="settings", variant="primary", on_click=lambda: self.controller.go_to("SettingsPage"))
+            make_button(tr('ui.pages.downloads.go_to_settings'), icon_name="settings", variant="primary", on_click=lambda: self.controller.go_to("SettingsPage"))
         )
         self.api_banner.add_layout(banner_row)
         layout.addWidget(self.api_banner)
@@ -99,22 +100,22 @@ class DownloadsPage(BasePage):
         title.setStyleSheet("font-weight: 650;")
         search_row.addWidget(title)
         self.mod_id_edit = QLineEdit()
-        self.mod_id_edit.setPlaceholderText("例如 3753（星露谷物语 SVE）")
+        self.mod_id_edit.setPlaceholderText(tr('ui.pages.downloads.e_g_3753_stardew_valley_sve'))
         self.mod_id_edit.setValidator(QIntValidator(1, 2_147_483_647, self))
         self.mod_id_edit.returnPressed.connect(self.query_mod)
         search_row.addWidget(self.mod_id_edit, 1)
         self.query_button = make_button(
-            "获取 Mod 详情", icon_name="search", variant="primary", on_click=self.query_mod
+            tr('ui.pages.downloads.fetch_mod_details'), icon_name="search", variant="primary", on_click=self.query_mod
         )
         search_row.addWidget(self.query_button)
         search_row.addWidget(
-            make_button("打开 Nexus 网页", icon_name="external", on_click=self.open_nexus_page)
+            make_button(tr('ui.pages.downloads.open_nexus_page'), icon_name="external", on_click=self.open_nexus_page)
         )
         search_row.addWidget(
-            make_button("导入本地压缩包", icon_name="folder", on_click=self.import_archive)
+            make_button(tr('ui.pages.downloads.import_local_archive'), icon_name="folder", on_click=self.import_archive)
         )
         search_card.add_layout(search_row)
-        self.query_hint = QLabel("只使用 Nexus 官方 API；下载权限遵循 Nexus 账号与 API 规则。")
+        self.query_hint = QLabel(tr('ui.pages.downloads.uses_only_the_official_nexus_api_download_permission_bce51e'))
         self.query_hint.setObjectName("Muted")
         search_card.add(self.query_hint)
         layout.addWidget(search_card)
@@ -124,11 +125,11 @@ class DownloadsPage(BasePage):
 
         details_wrapper, details_layout = make_scroll_content(splitter)
         details_card = Card()
-        self.details_title = QLabel("查询一个 Mod")
+        self.details_title = QLabel(tr('ui.pages.downloads.look_up_a_mod'))
         self.details_title.setStyleSheet("font-size: 18px; font-weight: 700;")
         self.details_title.setWordWrap(True)
         details_card.add(self.details_title)
-        self.details_meta = QLabel("输入 Nexus Mod ID 获取作者、版本、依赖与可下载文件。")
+        self.details_meta = QLabel(tr('ui.pages.downloads.enter_a_nexus_mod_id_to_get_the_author_version_depen_57780c'))
         self.details_meta.setObjectName("Muted")
         self.details_meta.setWordWrap(True)
         details_card.add(self.details_meta)
@@ -140,11 +141,11 @@ class DownloadsPage(BasePage):
         self.requirements_label.setWordWrap(True)
         self.requirements_label.setObjectName("Muted")
         details_card.add(self.requirements_label)
-        files_header = SectionHeader("可下载文件", "选择主文件；汉化包等可选文件请按需选择")
+        files_header = SectionHeader(tr('ui.pages.downloads.downloadable_files'), tr('ui.pages.downloads.select_the_main_file_choose_optional_files_such_as_t_7b282c'))
         self.files_table = QTableWidget()
         setup_table(
             self.files_table,
-            ["文件名", "版本", "类别", "大小", "上传时间"],
+            [tr('ui.pages.downloads.file_name'), tr('ui.pages.downloads.version'), tr('ui.pages.downloads.category'), tr('ui.pages.downloads.size'), tr('ui.pages.downloads.uploaded')],
             stretch_column=0,
             row_height=34,
         )
@@ -154,13 +155,13 @@ class DownloadsPage(BasePage):
         details_card.add(self.files_table, 1)
         file_actions = QHBoxLayout()
         self.download_button = make_button(
-            "下载选中文件", icon_name="download", variant="primary", on_click=self.download_selected
+            tr('ui.pages.downloads.download_selected_files'), icon_name="download", variant="primary", on_click=self.download_selected
         )
         self.download_button.setEnabled(False)
         file_actions.addWidget(self.download_button)
         file_actions.addWidget(
             make_button(
-                "打开文件页面",
+                tr('ui.pages.downloads.open_file_page'),
                 icon_name="external",
                 on_click=self.open_selected_file_page,
             )
@@ -175,16 +176,16 @@ class DownloadsPage(BasePage):
         splitter.addWidget(details_wrapper)
 
         queue_card = Card()
-        queue_header = SectionHeader("下载队列", "支持暂停、继续、取消与失败重试")
+        queue_header = SectionHeader(tr('ui.pages.downloads.download_queue'), tr('ui.pages.downloads.supports_pause_resume_cancel_and_retry_on_failure'))
         self.queue_refresh = make_button(
-            "刷新", icon_name="refresh", variant="tool", on_click=self.refresh_downloads
+            tr('ui.pages.downloads.refresh'), icon_name="refresh", variant="tool", on_click=self.refresh_downloads
         )
         queue_header.add_action(self.queue_refresh)
         queue_card.add(queue_header)
         self.queue_table = QTableWidget()
         setup_table(
             self.queue_table,
-            ["文件", "类型", "状态", "进度", "已下载", "更新时间"],
+            [tr('ui.pages.downloads.file'), tr('ui.pages.downloads.type'), tr('ui.pages.downloads.status'), tr('ui.pages.downloads.progress'), tr('ui.pages.downloads.downloaded'), tr('ui.pages.downloads.update_time')],
             stretch_column=0,
             row_height=36,
         )
@@ -192,14 +193,14 @@ class DownloadsPage(BasePage):
         queue_card.add(self.queue_table, 1)
         queue_actions = QHBoxLayout()
         queue_actions.setSpacing(6)
-        self.pause_button = make_button("暂停", icon_name="pause", on_click=self.toggle_pause)
-        self.cancel_button = make_button("取消", icon_name="x", variant="danger", on_click=self.cancel_download)
-        self.retry_button = make_button("重试/继续", icon_name="refresh", on_click=self.retry_download)
+        self.pause_button = make_button(tr('ui.pages.downloads.pause'), icon_name="pause", on_click=self.toggle_pause)
+        self.cancel_button = make_button(tr('ui.pages.downloads.cancel'), icon_name="x", variant="danger", on_click=self.cancel_download)
+        self.retry_button = make_button(tr('ui.pages.downloads.retry_resume'), icon_name="refresh", on_click=self.retry_download)
         self.install_button = make_button(
-            "安装已下载", icon_name="package", variant="primary", on_click=self.install_downloaded
+            tr('ui.pages.downloads.install_downloaded'), icon_name="package", variant="primary", on_click=self.install_downloaded
         )
         self.open_download_button = make_button(
-            "打开所在文件夹", icon_name="folder", on_click=self.open_download_folder
+            tr('ui.pages.downloads.open_containing_folder'), icon_name="folder", on_click=self.open_download_folder
         )
         for button in (
             self.pause_button,
@@ -249,7 +250,7 @@ class DownloadsPage(BasePage):
         try:
             self._downloads = self.services.downloads.list_for_game(self.game_id)
         except Exception:
-            log.exception("读取下载队列失败")
+            log.exception(tr('ui.pages.downloads.failed_to_read_download_queue'))
             return
         selected_id = self._selected_download().id if self._selected_download() else None
         clear_table(self.queue_table)
@@ -257,7 +258,7 @@ class DownloadsPage(BasePage):
             row = self.queue_table.rowCount()
             self.queue_table.insertRow(row)
             self.queue_table.setItem(row, 0, cell(item.file_name, data=item.id, tooltip=item.archive_path or ""))
-            kind_label = {"mod": "Mod", "update": "更新", "translation": "汉化"}.get(item.kind.value, item.kind.value)
+            kind_label = {"mod": "Mod", "update": tr('ui.pages.downloads.update'), "translation": tr('ui.pages.downloads.translation')}.get(item.kind.value, item.kind.value)
             self.queue_table.setItem(row, 1, cell(kind_label))
             self.queue_table.setItem(row, 2, cell(item.status.label, tooltip=item.error or ""))
             progress = f"{item.progress}%"
@@ -269,7 +270,7 @@ class DownloadsPage(BasePage):
             if item.id == selected_id:
                 self.queue_table.selectRow(row)
         self.download_hint.setText(
-            f"{len(self._downloads)} 个任务 · 非 Premium 账号可在 Nexus 网页下载后导入压缩包"
+            tr('ui.pages.downloads.0_tasks_non_premium_accounts_can_download_from_the_n_78fa2c', len(self._downloads))
         )
         self._queue_selection_changed()
 
@@ -297,16 +298,16 @@ class DownloadsPage(BasePage):
         self.install_button.setEnabled(item.status is DownloadStatus.COMPLETED)
         self.cancel_button.setEnabled(item.status in (DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED))
         self.pause_button.setEnabled(item.status in (DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING))
-        self.pause_button.setText("暂停")
+        self.pause_button.setText(tr('ui.pages.downloads.pause'))
         self.retry_button.setEnabled(
             item.status in (DownloadStatus.PAUSED, DownloadStatus.FAILED, DownloadStatus.CANCELLED)
         )
         if item.status is DownloadStatus.PAUSED:
-            self.retry_button.setText("继续下载")
+            self.retry_button.setText(tr('ui.pages.downloads.resume_download'))
         elif item.status is DownloadStatus.FAILED:
-            self.retry_button.setText("重试")
+            self.retry_button.setText(tr('ui.pages.downloads.retry'))
         else:
-            self.retry_button.setText("继续/重试")
+            self.retry_button.setText(tr('ui.pages.downloads.resume_retry'))
         if item.error:
             self.download_hint.setText(item.error)
 
@@ -320,34 +321,34 @@ class DownloadsPage(BasePage):
             return
         text = self.mod_id_edit.text().strip()
         if not text.isdigit():
-            self.error("请输入正确的 Nexus Mod ID（数字）。")
+            self.error(tr('ui.pages.downloads.please_enter_a_valid_nexus_mod_id_numeric'))
             return
         if not self.services.nexus_configured:
-            self.error("请先在设置中配置 Nexus API Key。")
+            self.error(tr('ui.pages.downloads.please_configure_the_nexus_api_key_in_settings_first'))
             return
         mod_id = int(text)
         domain = self.current_game.nexus_domain
         self.query_button.setEnabled(False)
-        self.query_button.setText("查询中…")
-        self.query_hint.setText("正在请求 Nexus API…")
+        self.query_button.setText(tr('ui.pages.downloads.looking_up'))
+        self.query_hint.setText(tr('ui.pages.downloads.requesting_nexus_api'))
 
         def work():
             info = self.services.nexus.get_mod(domain, mod_id)
             files = self.services.nexus.get_files(domain, mod_id)
             return info, files
 
-        self.tasks.run("获取 Nexus Mod 详情", work, on_done=self._query_done, on_error=self._query_failed)
+        self.tasks.run(tr('ui.pages.downloads.fetch_nexus_mod_details'), work, on_done=self._query_done, on_error=self._query_failed)
 
     def _query_done(self, result) -> None:  # type: ignore[no-untyped-def]
         self.query_button.setEnabled(True)
-        self.query_button.setText("获取 Mod 详情")
+        self.query_button.setText(tr('ui.pages.downloads.fetch_mod_details'))
         info, files = result
         self._mod_info = info
         self._files = files
         self.details_title.setText(info.name)
         self.details_meta.setText(
-            f"Mod ID {info.mod_id} · {info.version or '未知版本'} · {info.author or '未知作者'} · "
-            f"{info.category or '未分类'}"
+            f"Mod ID {info.mod_id} · {info.version or tr('ui.pages.downloads.unknown_version')} · "
+            f"{info.author or tr('ui.pages.downloads.unknown_author')} · {info.category or tr('ui.pages.downloads.uncategorized')}"
         )
         description = _strip_html(info.description)
         self.details_description.setText(
@@ -355,13 +356,13 @@ class DownloadsPage(BasePage):
         )
         if info.requirements:
             self.requirements_label.setText(
-                "Nexus 依赖：" + "；".join(
+                tr('ui.pages.downloads.nexus_dependencies') + "；".join(
                     f"{req.mod_name}" + (f"（{req.url}）" if req.url else "")
                     for req in info.requirements
                 )
             )
         else:
-            self.requirements_label.setText("Nexus 未列出额外依赖，仍请核对 Mod 页面说明。")
+            self.requirements_label.setText(tr('ui.pages.downloads.nexus_lists_no_additional_dependencies_still_check_t_008963'))
         clear_table(self.files_table)
         for file in files:
             row = self.files_table.rowCount()
@@ -383,15 +384,20 @@ class DownloadsPage(BasePage):
             else:
                 self.files_table.selectRow(0)
         self.query_hint.setText(
-            f"已获取 {len(files)} 个文件。Nexus API 剩余额度："
-            f"{self.services.nexus.rate_limit.hourly_remaining if self.services.nexus.rate_limit.hourly_remaining is not None else '未知'}"
+            tr(
+                'ui.pages.downloads.retrieved_0_files_nexus_api_remaining_quota_1',
+                len(files),
+                self.services.nexus.rate_limit.hourly_remaining
+                if self.services.nexus.rate_limit.hourly_remaining is not None
+                else tr('ui.pages.downloads.unknown'),
+            )
         )
         self._file_selection_changed()
 
     def _query_failed(self, message: str) -> None:
         self.query_button.setEnabled(True)
-        self.query_button.setText("获取 Mod 详情")
-        self.query_hint.setText("查询失败。")
+        self.query_button.setText(tr('ui.pages.downloads.fetch_mod_details'))
+        self.query_hint.setText(tr('ui.pages.downloads.query_failed'))
         self.error(message)
 
     def _selected_file(self) -> NexusFile | None:
@@ -407,8 +413,13 @@ class DownloadsPage(BasePage):
         self.download_button.setEnabled(file is not None and self._mod_info is not None)
         if file:
             self.file_hint.setText(
-                f"选中：{file.file_name or file.name} · "
-                f"{'主文件' if file.is_primary else file.category_name or '可选文件'}"
+                tr(
+                    'ui.pages.downloads.selected_0_1',
+                    file.file_name or file.name,
+                    tr('ui.pages.downloads.main_file')
+                    if file.is_primary
+                    else file.category_name or tr('ui.pages.downloads.optional_files'),
+                )
             )
         else:
             self.file_hint.setText("")
@@ -417,7 +428,7 @@ class DownloadsPage(BasePage):
         file = self._selected_file()
         info = self._mod_info
         if not file or not info or not self.game_id:
-            self.toast("请先查询 Mod 并选择文件。", "warning")
+            self.toast(tr('ui.pages.downloads.please_look_up_the_mod_and_select_a_file_first'), "warning")
             return
         try:
             self.services.downloads.enqueue(
@@ -432,7 +443,7 @@ class DownloadsPage(BasePage):
         except Exception as exc:
             self.error(str(exc))
             return
-        self.toast("下载任务已加入队列。", "success")
+        self.toast(tr('ui.pages.downloads.download_task_queued'), "success")
         self.refresh_downloads()
         self.controller.on_data_changed()
 
@@ -441,7 +452,7 @@ class DownloadsPage(BasePage):
             return
         mod_id = self.mod_id_edit.text().strip()
         if not mod_id.isdigit():
-            self.toast("请先输入 Mod ID。", "warning")
+            self.toast(tr('ui.pages.downloads.please_enter_a_mod_id_first'), "warning")
             return
         QDesktopServices.openUrl(
             QUrl(f"https://www.nexusmods.com/{self.current_game.nexus_domain}/mods/{mod_id}")
@@ -485,7 +496,7 @@ class DownloadsPage(BasePage):
         item = self._selected_download()
         if not item:
             return
-        if not self.confirm("取消下载", f"取消“{item.file_name}”？未完成的分片会被删除。"):
+        if not self.confirm(tr('ui.pages.downloads.cancel_download'), tr('ui.pages.downloads.cancel_0_incomplete_parts_will_be_deleted', item.file_name)):
             return
         try:
             self.services.downloads.cancel(item.id)
@@ -501,8 +512,8 @@ class DownloadsPage(BasePage):
             return
         if item.kind is DownloadKind.UPDATE:
             if not self.confirm(
-                "安装更新",
-                f"安装更新包？\n{item.archive_path}\n\n安装前会备份当前 Mod，失败时可回滚。",
+                tr('ui.pages.downloads.install_update'),
+                tr('ui.pages.downloads.install_update_package_0_the_current_mod_will_be_bac_2b90a0', item.archive_path),
             ):
                 return
             self._install_update(item)
@@ -511,11 +522,11 @@ class DownloadsPage(BasePage):
 
     def _install_update(self, item: DownloadView) -> None:
         self.install_button.setEnabled(False)
-        self.download_hint.setText("正在安装更新…")
+        self.download_hint.setText(tr('ui.pages.downloads.installing_updates'))
 
         def done(_result) -> None:  # type: ignore[no-untyped-def]
-            self.download_hint.setText("更新安装完成。")
-            self.toast("更新安装完成。", "success")
+            self.download_hint.setText(tr('ui.pages.downloads.update_installed'))
+            self.toast(tr('ui.pages.downloads.update_installed'), "success")
             self.controller.on_data_changed()
             self.refresh_downloads()
 
@@ -524,7 +535,7 @@ class DownloadsPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "安装更新包",
+            tr('ui.pages.downloads.install_update_package'),
             lambda: self.services.updates.install_update_from_download(item.id),
             on_done=done,
             on_error=failed,
@@ -536,9 +547,9 @@ class DownloadsPage(BasePage):
             return
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "选择本地 Mod 压缩包",
+            tr('ui.pages.downloads.select_local_mod_archive'),
             "",
-            "Mod 压缩包 (*.zip *.7z *.tar.gz);;所有文件 (*.*)",
+            tr('ui.pages.downloads.mod_archives_zip_7z_tar_gz_all_files'),
         )
         if not path:
             return
@@ -546,7 +557,7 @@ class DownloadsPage(BasePage):
 
     def _install_local(self, archive: Path, game_id: int) -> None:
         self._install_game_id = game_id
-        self.download_hint.setText("正在分析压缩包…")
+        self.download_hint.setText(tr('ui.pages.downloads.analyzing_archive'))
 
         def previewed(plan) -> None:  # type: ignore[no-untyped-def]
             self._pending_plan = plan
@@ -559,24 +570,24 @@ class DownloadsPage(BasePage):
             self._execute_install(plan, game_id)
 
         self.tasks.run(
-            "分析 Mod 压缩包",
+            tr('ui.pages.downloads.analyze_mod_archive'),
             lambda: self.services.mods.preview_install(game_id, archive),
             on_done=previewed,
             on_error=lambda message: self._install_failed(message),
         )
 
     def _execute_install(self, plan: InstallPlan, game_id: int) -> None:
-        self.download_hint.setText("正在安装…")
+        self.download_hint.setText(tr('ui.pages.downloads.installing'))
 
         def done(result) -> None:  # type: ignore[no-untyped-def]
             self._pending_plan = None
             self.download_hint.setText("")
-            self.toast(f"已安装 {len(result.installed_names) or len(plan.entries)} 个 Mod。", "success")
+            self.toast(tr('ui.pages.downloads.installed_0_mods', len(result.installed_names) or len(plan.entries)), "success")
             self.controller.on_data_changed()
             self.refresh_downloads()
 
         self.tasks.run(
-            "安装 Mod",
+            tr('ui.pages.downloads.install_mod'),
             lambda: self.services.mods.install_plan(
                 game_id,
                 plan,

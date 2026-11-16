@@ -39,13 +39,14 @@ from ..widgets import (
     setup_table,
 )
 from .base import BasePage
+from ...i18n import tr
 
 log = logging.getLogger(__name__)
 
 
 class ModsPage(BasePage):
-    title = "Mod 管理"
-    subtitle = "扫描、安装、启用、禁用并检查依赖与汉化状态"
+    title = tr('ui.pages.mods.mod_management')
+    subtitle = tr('ui.pages.mods.scan_install_enable_disable_and_check_dependencies_a_6dc375')
 
     def __init__(self, controller, parent=None) -> None:  # type: ignore[no-untyped-def]
         super().__init__(controller, parent)
@@ -66,33 +67,33 @@ class ModsPage(BasePage):
         row_one = QHBoxLayout()
         row_one.setSpacing(8)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("搜索名称、作者、UniqueID 或 Nexus ID…")
+        self.search.setPlaceholderText(tr('ui.pages.mods.search_name_author_uniqueid_or_nexus_id'))
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self._apply_filter)
         row_one.addWidget(self.search, 1)
         self.filter_combo = QComboBox()
         for label, value in (
-            ("全部 Mod", "all"),
-            ("已启用", "enabled"),
-            ("已禁用", "disabled"),
-            ("有更新", "update"),
-            ("缺失依赖", "missing_deps"),
-            ("重复安装", "duplicate"),
-            ("未汉化", "untranslated"),
-            ("内容包", "kind_content"),
-            ("代码 Mod", "kind_code"),
-            ("框架/工具", "kind_framework"),
-            ("文件丢失", "missing"),
+            (tr('ui.pages.mods.all_mods'), "all"),
+            (tr('ui.pages.mods.enabled'), "enabled"),
+            (tr('ui.pages.mods.disabled'), "disabled"),
+            (tr('ui.pages.mods.update_available'), "update"),
+            (tr('ui.pages.mods.missing_dependencies'), "missing_deps"),
+            (tr('ui.pages.mods.duplicate_installation'), "duplicate"),
+            (tr('ui.pages.mods.not_translated'), "untranslated"),
+            (tr('ui.pages.mods.content_pack'), "kind_content"),
+            (tr('ui.pages.mods.code_mod'), "kind_code"),
+            (tr('ui.pages.mods.framework_tool'), "kind_framework"),
+            (tr('ui.pages.mods.file_missing'), "missing"),
         ):
             self.filter_combo.addItem(label, value)
         self.filter_combo.currentIndexChanged.connect(self._apply_filter)
         row_one.addWidget(self.filter_combo)
         self.sort_combo = QComboBox()
         for label, value in (
-            ("按名称排序", "name"),
-            ("按作者排序", "author"),
-            ("按大小排序", "size"),
-            ("按更新时间排序", "updated"),
+            (tr('ui.pages.mods.sort_by_name'), "name"),
+            (tr('ui.pages.mods.sort_by_author'), "author"),
+            (tr('ui.pages.mods.sort_by_size'), "size"),
+            (tr('ui.pages.mods.sort_by_update_time'), "updated"),
         ):
             self.sort_combo.addItem(label, value)
         self.sort_combo.currentIndexChanged.connect(self._apply_filter)
@@ -102,25 +103,25 @@ class ModsPage(BasePage):
         row_two = QHBoxLayout()
         row_two.setSpacing(8)
         self.scan_button = make_button(
-            "扫描 Mods", icon_name="refresh", variant="primary", on_click=self.scan
+            tr('ui.pages.mods.scan_mods'), icon_name="refresh", variant="primary", on_click=self.scan
         )
         self.install_button = make_button(
-            "安装压缩包", icon_name="download", on_click=self.install_archive
+            tr('ui.pages.mods.install_archive'), icon_name="download", on_click=self.install_archive
         )
         row_two.addWidget(self.scan_button)
         row_two.addWidget(self.install_button)
         row_two.addWidget(
-            make_button("启用选中", icon_name="check", on_click=lambda: self.bulk_toggle(True))
+            make_button(tr('ui.pages.mods.enable_selected'), icon_name="check", on_click=lambda: self.bulk_toggle(True))
         )
         row_two.addWidget(
-            make_button("禁用选中", icon_name="pause", on_click=lambda: self.bulk_toggle(False))
+            make_button(tr('ui.pages.mods.disable_selected'), icon_name="pause", on_click=lambda: self.bulk_toggle(False))
         )
         self.uninstall_button = make_button(
-            "卸载选中", icon_name="trash", variant="danger", on_click=self.uninstall_selected
+            tr('ui.pages.mods.uninstall_selected'), icon_name="trash", variant="danger", on_click=self.uninstall_selected
         )
         row_two.addWidget(self.uninstall_button)
         self.backups_button = make_button(
-            "备份管理", icon_name="backup", on_click=self.show_backups
+            tr('ui.pages.mods.backup_management'), icon_name="backup", on_click=self.show_backups
         )
         row_two.addWidget(self.backups_button)
         row_two.addStretch(1)
@@ -141,11 +142,11 @@ class ModsPage(BasePage):
 
         self.body = QStackedWidget()
         self.empty = EmptyState(
-            "尚未选择游戏",
-            "添加游戏后，ModPilot 会扫描 Mods 目录并显示每个 Mod 的依赖、更新和汉化状态。",
+            tr('ui.pages.mods.no_game_selected'),
+            tr('ui.pages.mods.after_you_add_a_game_modpilot_scans_the_mods_folder_0c68e3'),
             "gamepad",
             make_button(
-                "前往游戏管理", icon_name="gamepad", variant="primary",
+                tr('ui.pages.mods.go_to_game_management'), icon_name="gamepad", variant="primary",
                 on_click=lambda: self.controller.go_to("GamesPage"),
             ),
         )
@@ -154,16 +155,16 @@ class ModsPage(BasePage):
         splitter = QSplitter(Qt.Horizontal)
         splitter.setChildrenCollapsible(False)
         table_card = Card()
-        table_header = SectionHeader("Mod 列表", "支持多选批量操作")
+        table_header = SectionHeader(tr('ui.pages.mods.mod_list'), tr('ui.pages.mods.supports_multi_select_batch_operations'))
         self.refresh_button = make_button(
-            "刷新列表", icon_name="refresh", variant="tool", on_click=self.refresh
+            tr('ui.pages.mods.refresh_list'), icon_name="refresh", variant="tool", on_click=self.refresh
         )
         table_header.add_action(self.refresh_button)
         table_card.add(table_header)
         self.table = QTableWidget()
         setup_table(
             self.table,
-            ["名称", "版本", "状态", "更新", "汉化", "Nexus", "作者"],
+            [tr('ui.pages.mods.name'), tr('ui.pages.mods.version'), tr('ui.pages.mods.status'), tr('ui.pages.mods.update'), tr('ui.pages.mods.translation'), "Nexus", tr('ui.pages.mods.author')],
             stretch_column=0,
             row_height=40,
         )
@@ -172,7 +173,7 @@ class ModsPage(BasePage):
         splitter.addWidget(table_card)
 
         details_card = Card()
-        details_card.setMinimumWidth(330)
+        details_card.setMinimumWidth(390)
         details_scroll = QScrollArea()
         details_scroll.setWidgetResizable(True)
         details_scroll.setFrameShape(QFrame.NoFrame)
@@ -185,7 +186,7 @@ class ModsPage(BasePage):
         splitter.addWidget(details_card)
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 2)
-        splitter.setSizes([700, 390])
+        splitter.setSizes([660, 430])
         self.body.addWidget(splitter)
         outer.addWidget(self.body, 1)
         self._build_details()
@@ -210,8 +211,8 @@ class ModsPage(BasePage):
         try:
             self._all_mods = self.services.mods.list_mods(game_id)
         except Exception as exc:
-            log.exception("读取 Mod 列表失败")
-            self.error(f"读取 Mod 列表失败：{exc}")
+            log.exception(tr('ui.pages.mods.failed_to_read_mod_list'))
+            self.error(tr('ui.pages.mods.failed_to_read_mod_list_0', exc))
             return
         self._by_id = {mod.id: mod for mod in self._all_mods}
         self._apply_filter()
@@ -282,37 +283,37 @@ class ModsPage(BasePage):
             self.table.setItem(row, 0, name_item)
             self.table.setItem(row, 1, cell(mod.version))
             if not mod.is_present:
-                status_text, status_color = "文件丢失", colors["muted"]
+                status_text, status_color = tr('ui.pages.mods.file_missing'), colors["muted"]
             elif mod.enabled:
-                status_text, status_color = "已启用", colors["success"]
+                status_text, status_color = tr('ui.pages.mods.enabled'), colors["success"]
             else:
-                status_text, status_color = "已禁用", colors["muted"]
+                status_text, status_color = tr('ui.pages.mods.disabled'), colors["muted"]
             status_item = cell(status_text)
             status_item.setForeground(QColor(status_color))
             self.table.setItem(row, 2, status_item)
             if mod.update_status is UpdateStatus.AVAILABLE:
-                update_text = f"可更新 {mod.latest_version or ''}".strip()
+                update_text = tr('ui.pages.mods.update_to_0', mod.latest_version or '').strip()
                 update_color = colors["warning"]
             elif mod.update_status is UpdateStatus.UP_TO_DATE:
-                update_text, update_color = "最新", colors["success"]
+                update_text, update_color = tr('ui.pages.mods.latest'), colors["success"]
             elif mod.update_status is UpdateStatus.ERROR:
-                update_text, update_color = "检查失败", colors["danger"]
+                update_text, update_color = tr('ui.pages.mods.check_failed'), colors["danger"]
             elif mod.update_status is UpdateStatus.IGNORED:
-                update_text, update_color = "已忽略", colors["muted"]
+                update_text, update_color = tr('ui.pages.mods.ignored'), colors["muted"]
             elif mod.update_status is UpdateStatus.DOWNLOADED:
-                update_text, update_color = "已下载", colors["info"]
+                update_text, update_color = tr('ui.pages.mods.downloaded'), colors["info"]
             else:
-                update_text, update_color = "未检查", colors["subtle"]
+                update_text, update_color = tr('ui.pages.mods.not_checked'), colors["subtle"]
             update_item = cell(update_text, tooltip=mod.update_error or "")
             update_item.setForeground(QColor(update_color))
             self.table.setItem(row, 3, update_item)
             if mod.translation_applied:
-                translation_text = "已汉化"
+                translation_text = tr('ui.pages.mods.localized')
             elif mod.translation_eligible:
                 translation_text = (
                     f"{mod.translation_done}/{mod.translation_total}"
                     if mod.translation_total
-                    else "可汉化"
+                    else tr('ui.pages.mods.translatable')
                 )
             else:
                 translation_text = "—"
@@ -325,7 +326,7 @@ class ModsPage(BasePage):
                     if item:
                         item.setForeground(QColor(colors["muted"]))
         self.table.blockSignals(False)
-        self.count_label.setText(f"{len(items)} / {len(self._all_mods)} 个 Mod")
+        self.count_label.setText(tr('ui.pages.mods.0_1_mods', len(items), len(self._all_mods)))
         if self._selected_mod and self._selected_mod.id in {mod.id for mod in items}:
             self._select_mod(self._selected_mod.id)
             self._selection_changed()
@@ -363,7 +364,7 @@ class ModsPage(BasePage):
     # ------------------------------------------------------------------
 
     def _build_details(self) -> None:
-        self.details_title = QLabel("选择一个 Mod")
+        self.details_title = QLabel(tr('ui.pages.mods.select_a_mod'))
         self.details_title.setStyleSheet("font-size: 18px; font-weight: 700;")
         self.details_title.setWordWrap(True)
         self.details_layout.addWidget(self.details_title)
@@ -386,7 +387,7 @@ class ModsPage(BasePage):
         self.details_description.setWordWrap(True)
         self.details_description.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.details_layout.addWidget(self.details_description)
-        self.deps_title = QLabel("依赖关系")
+        self.deps_title = QLabel(tr('ui.pages.mods.dependencies'))
         self.deps_title.setStyleSheet("font-weight: 650; margin-top: 4px;")
         self.details_layout.addWidget(self.deps_title)
         self.deps_container = QWidget()
@@ -400,17 +401,17 @@ class ModsPage(BasePage):
         self.details_layout.addWidget(self.details_error)
 
         policy_row = QHBoxLayout()
-        policy_label = QLabel("更新策略")
+        policy_label = QLabel(tr('ui.pages.mods.update_policy'))
         policy_label.setObjectName("Muted")
         self.policy_combo = QComboBox()
         for label, value in (
-            ("继承全局设置", "inherit"),
-            ("仅手动检查", "manual"),
-            ("更新提醒", "notify"),
-            ("确认后下载", "confirm_download"),
-            ("自动下载", "auto_download"),
-            ("自动下载并安装", "auto_install"),
-            ("忽略更新", "ignore"),
+            (tr('ui.pages.mods.inherit_global_settings'), "inherit"),
+            (tr('ui.pages.mods.manual_check_only'), "manual"),
+            (tr('ui.pages.mods.update_alerts'), "notify"),
+            (tr('ui.pages.mods.download_after_confirmation'), "confirm_download"),
+            (tr('ui.pages.mods.auto_download'), "auto_download"),
+            (tr('ui.pages.mods.auto_download_and_install'), "auto_install"),
+            (tr('ui.pages.mods.ignore_update'), "ignore"),
         ):
             self.policy_combo.addItem(label, value)
         self.policy_combo.currentIndexChanged.connect(self._policy_changed)
@@ -420,17 +421,18 @@ class ModsPage(BasePage):
 
         action_row = QHBoxLayout()
         action_row.setSpacing(6)
-        self.toggle_button = make_button("启用", icon_name="play", variant="primary", on_click=self.toggle_selected)
-        self.open_button = make_button("打开文件夹", icon_name="folder", on_click=self.open_selected_folder)
+        self.toggle_button = make_button(tr('ui.pages.mods.enable'), icon_name="play", variant="primary", on_click=self.toggle_selected)
+        self.open_button = make_button(tr('ui.pages.mods.open_folder'), icon_name="folder", on_click=self.open_selected_folder)
         action_row.addWidget(self.toggle_button)
         action_row.addWidget(self.open_button)
         self.details_layout.addLayout(action_row)
 
         second_row = QHBoxLayout()
         second_row.setSpacing(6)
-        self.check_button = make_button("检查更新", icon_name="update", on_click=self.check_selected_update)
-        self.nexus_button = make_button("Nexus 页面", icon_name="external", on_click=self.open_nexus)
-        self.backup_button = make_button("备份", icon_name="backup", on_click=self.show_selected_backups)
+        self.check_button = make_button(tr('ui.pages.mods.check_updates'), icon_name="update", on_click=self.check_selected_update)
+        self.nexus_button = make_button(tr('ui.pages.mods.nexus_page'), icon_name="external", on_click=self.open_nexus)
+        self.backup_button = make_button(tr('ui.pages.mods.backup'), icon_name="backup", on_click=self.show_selected_backups)
+        self.backup_button.setMinimumWidth(104)
         second_row.addWidget(self.check_button)
         second_row.addWidget(self.nexus_button)
         second_row.addWidget(self.backup_button)
@@ -438,14 +440,14 @@ class ModsPage(BasePage):
 
         third_row = QHBoxLayout()
         third_row.setSpacing(6)
-        self.pin_button = make_button("锁定当前版本", icon_name="shield", on_click=self.toggle_pin)
-        self.ignore_button = make_button("忽略版本", icon_name="x", on_click=self.ignore_update)
+        self.pin_button = make_button(tr('ui.pages.mods.lock_version'), icon_name="shield", on_click=self.toggle_pin)
+        self.ignore_button = make_button(tr('ui.pages.mods.ignore_version'), icon_name="x", on_click=self.ignore_update)
         third_row.addWidget(self.pin_button)
         third_row.addWidget(self.ignore_button)
         self.details_layout.addLayout(third_row)
 
         self.delete_button = make_button(
-            "卸载此 Mod", icon_name="trash", variant="danger", on_click=self.uninstall_selected
+            tr('ui.pages.mods.uninstall_this_mod'), icon_name="trash", variant="danger", on_click=self.uninstall_selected
         )
         self.details_layout.addWidget(self.delete_button)
         self.details_layout.addStretch(1)
@@ -468,45 +470,45 @@ class ModsPage(BasePage):
         clear_layout(self.details_badges)
         clear_layout(self.deps_layout)
         if mod is None:
-            self.details_title.setText("选择一个 Mod")
-            self.details_meta.setText("查看版本、依赖、更新策略与汉化状态。")
+            self.details_title.setText(tr('ui.pages.mods.select_a_mod'))
+            self.details_meta.setText(tr('ui.pages.mods.view_versions_dependencies_update_policies_and_trans_6e564e'))
             self.details_path.setText("")
             self.details_description.setText("")
             self.details_error.setText("")
-            self.deps_title.setText("依赖关系")
+            self.deps_title.setText(tr('ui.pages.mods.dependencies'))
             return
         self.details_title.setText(mod.name)
         self.details_meta.setText(
-            f"{mod.version} · {mod.author or '未知作者'} · {mod.kind.label if isinstance(mod.kind, ModKind) else mod.kind}"
+            f"{mod.version} · {mod.author or tr('ui.pages.mods.unknown_author')} · {mod.kind.label if isinstance(mod.kind, ModKind) else mod.kind}"
         )
         if not mod.is_present:
-            self.details_badges.addWidget(Badge("文件丢失", "danger"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.file_missing'), "danger"))
         elif mod.enabled:
-            self.details_badges.addWidget(Badge("已启用", "success"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.enabled'), "success"))
         else:
-            self.details_badges.addWidget(Badge("已禁用", "muted"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.disabled'), "muted"))
         if mod.duplicate:
-            self.details_badges.addWidget(Badge("重复安装", "danger"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.duplicate_installation'), "danger"))
         if mod.missing_dependencies:
-            self.details_badges.addWidget(Badge(f"缺少 {len(mod.missing_dependencies)} 个依赖", "danger"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.missing_0_dependencies', len(mod.missing_dependencies)), "danger"))
         if mod.update_status is UpdateStatus.AVAILABLE:
-            self.details_badges.addWidget(Badge(f"可更新至 {mod.latest_version}", "warning"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.update_available_0', mod.latest_version), "warning"))
         if mod.pinned_version:
-            self.details_badges.addWidget(Badge(f"锁定 {mod.pinned_version}", "info"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.lock_0', mod.pinned_version), "info"))
         if mod.ignored_version:
-            self.details_badges.addWidget(Badge(f"忽略 {mod.ignored_version}", "muted"))
+            self.details_badges.addWidget(Badge(tr('ui.pages.mods.ignore_0', mod.ignored_version), "muted"))
         self.details_badges.addStretch(1)
         self.details_path.setText(f"{mod.relative_path}\nUniqueID: {mod.unique_id}  ·  {human_size(mod.size_bytes)}")
-        self.details_description.setText(mod.description or "该 Mod 没有提供描述。")
+        self.details_description.setText(mod.description or tr('ui.pages.mods.this_mod_has_no_description'))
         self.details_error.setText(mod.scan_error or mod.update_error or "")
         self.details_error.setVisible(bool(mod.scan_error or mod.update_error))
         self.deps_title.setText(
-            f"依赖关系（{len(mod.dependencies)}）"
+            tr('ui.pages.mods.dependencies_0', len(mod.dependencies))
             if mod.dependencies
-            else "依赖关系（无声明）"
+            else tr('ui.pages.mods.dependencies_none_declared')
         )
         if not mod.dependencies:
-            empty = QLabel("manifest 未声明依赖。")
+            empty = QLabel(tr('ui.pages.mods.manifest_declares_no_dependencies'))
             empty.setObjectName("Muted")
             self.deps_layout.addWidget(empty)
         for dependency in mod.dependencies:
@@ -526,33 +528,38 @@ class ModsPage(BasePage):
             )
             label = QLabel(text)
             label.setToolTip(
-                f"已安装：{dependency.installed_version or '未安装'}"
-                f"{'（已禁用）' if dependency.installed_version and not dependency.enabled else ''}"
+                tr(
+                    'ui.pages.mods.installed_01',
+                    dependency.installed_version or tr('ui.pages.mods.not_installed'),
+                    tr('ui.pages.mods.disabled_d7940d')
+                    if dependency.installed_version and not dependency.enabled
+                    else '',
+                )
             )
             label.setWordWrap(True)
             layout.addWidget(label, 1)
             if dependency.satisfied:
-                layout.addWidget(Badge("满足", "success"))
+                layout.addWidget(Badge(tr('ui.pages.mods.met'), "success"))
             elif dependency.installed_version:
                 layout.addWidget(
-                    Badge("未启用" if not dependency.enabled else "版本不符", "danger")
+                    Badge(tr('ui.pages.mods.not_enabled') if not dependency.enabled else tr('ui.pages.mods.version_mismatch'), "danger")
                 )
             else:
-                layout.addWidget(Badge("缺失", "danger"))
+                layout.addWidget(Badge(tr('ui.pages.mods.missing'), "danger"))
             self.deps_layout.addWidget(row)
         self.policy_combo.blockSignals(True)
         index = self.policy_combo.findData(mod.update_policy or "inherit")
         self.policy_combo.setCurrentIndex(max(0, index))
         self.policy_combo.blockSignals(False)
-        self.toggle_button.setText("禁用" if mod.enabled else "启用")
+        self.toggle_button.setText(tr('ui.pages.mods.disable') if mod.enabled else tr('ui.pages.mods.enable'))
         self.toggle_button.setIcon(
             make_icon("pause" if mod.enabled else "play", "#FFFFFF", 16)
         )
         self.toggle_button.setEnabled(mod.is_present)
         self.check_button.setEnabled(bool(mod.nexus_mod_id))
         self.nexus_button.setEnabled(bool(mod.nexus_mod_id))
-        self.pin_button.setText("解除版本锁定" if mod.pinned_version else "锁定当前版本")
-        self.ignore_button.setText("清除忽略" if mod.ignored_version else "忽略此版本")
+        self.pin_button.setText(tr('ui.pages.mods.unlock_version') if mod.pinned_version else tr('ui.pages.mods.lock_version'))
+        self.ignore_button.setText(tr('ui.pages.mods.clear_ignore') if mod.ignored_version else tr('ui.pages.mods.ignore_version_aebc24'))
         self.delete_button.setEnabled(mod.is_present)
 
     def _text_color(self) -> str:
@@ -578,7 +585,7 @@ class ModsPage(BasePage):
         self.scan_button.setEnabled(False)
         self.progress.show()
         self.progress.setValue(0)
-        self.progress_label.setText("扫描中…")
+        self.progress_label.setText(tr('ui.pages.mods.scanning'))
 
         def progress(value: int, message: str) -> None:
             self.progress.setValue(value)
@@ -588,7 +595,7 @@ class ModsPage(BasePage):
             self.scan_button.setEnabled(True)
             self.progress.hide()
             self.progress_label.setText("")
-            self.toast(f"扫描完成：识别 {count} 个 Mod。", "success")
+            self.toast(tr('ui.pages.mods.scan_complete_0_mods_detected', count), "success")
             self.controller.on_data_changed()
             self.refresh()
 
@@ -599,7 +606,7 @@ class ModsPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "扫描 Mods",
+            tr('ui.pages.mods.scan_mods'),
             lambda progress_cb: self.services.mods.scan_game(game_id, progress_cb),
             with_progress=True,
             on_done=done,
@@ -613,15 +620,15 @@ class ModsPage(BasePage):
             return
         path, _filter = QFileDialog.getOpenFileName(
             self,
-            "选择 Mod 压缩包",
+            tr('ui.pages.mods.select_mod_archive'),
             "",
-            "Mod 压缩包 (*.zip *.7z *.tar.gz);;所有文件 (*.*)",
+            tr('ui.pages.mods.mod_archives_zip_7z_tar_gz_all_files'),
         )
         if not path:
             return
         self.progress.show()
         self.progress.setRange(0, 0)
-        self.progress_label.setText("正在分析压缩包…")
+        self.progress_label.setText(tr('ui.pages.mods.analyzing_archive'))
 
         def done(plan) -> None:  # type: ignore[no-untyped-def]
             self.progress.hide()
@@ -642,7 +649,7 @@ class ModsPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "分析 Mod 压缩包",
+            tr('ui.pages.mods.analyze_mod_archive'),
             lambda: self.services.mods.preview_install(game_id, Path(path)),
             on_done=done,
             on_error=failed,
@@ -651,7 +658,7 @@ class ModsPage(BasePage):
     def _execute_install(self, plan: InstallPlan, game_id: int) -> None:
         self.progress.show()
         self.progress.setRange(0, 100)
-        self.progress_label.setText("正在安装…")
+        self.progress_label.setText(tr('ui.pages.mods.installing'))
 
         def progress(value: int, message: str) -> None:
             self.progress.setValue(value)
@@ -661,10 +668,10 @@ class ModsPage(BasePage):
             self.progress.hide()
             self.progress_label.setText("")
             self._pending_plan = None
-            backup_text = f"，已创建 {len(result.backup_ids)} 个备份" if result.backup_ids else ""
-            self.toast(f"已安装 {len(result.installed_names) or len(plan.entries)} 个 Mod{backup_text}。", "success")
+            backup_text = tr('ui.pages.mods.created_0_backups', len(result.backup_ids)) if result.backup_ids else ""
+            self.toast(tr('ui.pages.mods.installed_0_mods1', len(result.installed_names) or len(plan.entries), backup_text), "success")
             if result.warnings:
-                log.info("安装警告：%s", result.warnings)
+                log.info(tr('ui.pages.mods.installation_warning_s'), result.warnings)
             self.controller.on_data_changed()
             self.refresh()
 
@@ -676,7 +683,7 @@ class ModsPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "安装 Mod",
+            tr('ui.pages.mods.install_mod'),
             lambda progress_cb: self.services.mods.install_plan(
                 game_id,
                 plan,
@@ -693,11 +700,11 @@ class ModsPage(BasePage):
     def bulk_toggle(self, enabled: bool) -> None:
         ids = self._selected_ids()
         if not ids:
-            self.toast("请先选择至少一个 Mod。", "warning")
+            self.toast(tr('ui.pages.mods.please_select_at_least_one_mod_first'), "warning")
             return
         self.progress.show()
         self.progress.setRange(0, 0)
-        self.progress_label.setText("正在切换状态…")
+        self.progress_label.setText(tr('ui.pages.mods.toggling_status'))
 
         def done(result) -> None:  # type: ignore[no-untyped-def]
             self.progress.hide()
@@ -705,13 +712,13 @@ class ModsPage(BasePage):
             self.progress_label.setText("")
             if result.failed:
                 self.error(
-                    "部分 Mod 切换失败：\n"
+                    tr('ui.pages.mods.failed_to_toggle_some_mods')
                     + "\n".join(f"{name}: {message}" for name, message in result.failed[:8])
                 )
             elif result.succeeded:
-                self.toast(f"已{'启用' if enabled else '禁用'} {len(result.succeeded)} 个 Mod。", "success")
+                self.toast(tr('ui.pages.mods.0_1_mods_c138bc', tr('ui.pages.mods.enable') if enabled else tr('ui.pages.mods.disable'), len(result.succeeded)), "success")
             else:
-                self.toast("没有需要切换状态的 Mod。", "info")
+                self.toast(tr('ui.pages.mods.no_mods_need_a_status_change'), "info")
             self.controller.on_data_changed()
             self.refresh()
 
@@ -722,7 +729,7 @@ class ModsPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "批量切换 Mod 状态",
+            tr('ui.pages.mods.toggle_mod_status_in_bulk'),
             lambda: self.services.mods.bulk_set_enabled(ids, enabled),
             on_done=done,
             on_error=failed,
@@ -738,22 +745,21 @@ class ModsPage(BasePage):
         if not mod:
             return
         if not self.confirm(
-            "卸载 Mod",
-            f"将备份并删除“{mod.name}”的文件夹。\n\n"
-            "备份保存在 ModPilot 数据目录，可随时恢复。确定继续吗？",
+            tr('ui.pages.mods.uninstall_mod'),
+            tr('ui.pages.mods.the_folder_for_0_will_be_backed_up_and_then_deleted_2cb6c1', mod.name),
             danger=True,
         ):
             return
         self.progress.show()
         self.progress.setRange(0, 0)
-        self.progress_label.setText("正在卸载…")
+        self.progress_label.setText(tr('ui.pages.mods.uninstalling'))
 
         def done(result) -> None:  # type: ignore[no-untyped-def]
             self.progress.hide()
             self.progress.setRange(0, 100)
             self.progress_label.setText("")
             self.toast(
-                f"已卸载 {result.mod_name}" + ("（已备份）" if result.backup_id else ""),
+                tr('ui.pages.mods.uninstalled_0', result.mod_name) + (tr('ui.pages.mods.backed_up') if result.backup_id else ""),
                 "success",
             )
             self.controller.on_data_changed()
@@ -766,7 +772,7 @@ class ModsPage(BasePage):
             self.error(message)
 
         self.tasks.run(
-            "卸载 Mod",
+            tr('ui.pages.mods.uninstall_mod'),
             lambda: self.services.mods.uninstall(mod.id),
             on_done=done,
             on_error=failed,
@@ -777,7 +783,7 @@ class ModsPage(BasePage):
             return
         path = Path(self.current_game.mods_path) / self._selected_mod.relative_path
         if not path.exists():
-            self.error("Mod 文件夹不存在，可能已被外部删除。")
+            self.error(tr('ui.pages.mods.the_mods_folder_does_not_exist_and_may_have_been_del_36d580'))
             return
         open_in_explorer(str(path))
 
@@ -795,22 +801,22 @@ class ModsPage(BasePage):
         if not mod or not mod.nexus_mod_id:
             return
         self.check_button.setEnabled(False)
-        self.check_button.setText("检查中…")
+        self.check_button.setText(tr('ui.pages.mods.checking'))
 
         def done(result) -> None:  # type: ignore[no-untyped-def]
             self.check_button.setEnabled(True)
-            self.check_button.setText("检查更新")
-            self.toast(result.message or "检查完成。", "success" if result.status.value != "error" else "danger")
+            self.check_button.setText(tr('ui.pages.mods.check_updates'))
+            self.toast(result.message or tr('ui.pages.mods.check_complete'), "success" if result.status.value != "error" else "danger")
             self.refresh()
             self.controller.on_data_changed()
 
         def failed(message: str) -> None:
             self.check_button.setEnabled(True)
-            self.check_button.setText("检查更新")
+            self.check_button.setText(tr('ui.pages.mods.check_updates'))
             self.error(message)
 
         self.tasks.run(
-            "检查单个 Mod 更新",
+            tr('ui.pages.mods.check_single_mod_update'),
             lambda: self.services.updates.check_mod(mod.id),
             on_done=done,
             on_error=failed,
@@ -826,7 +832,7 @@ class ModsPage(BasePage):
             self.error(str(exc))
             return
         self._selected_mod = self.services.mods.get_mod(self._selected_mod.id)
-        self.toast(f"更新策略已设为：{self.policy_combo.currentText()}", "success")
+        self.toast(tr('ui.pages.mods.update_policy_set_to_0', self.policy_combo.currentText()), "success")
 
     def toggle_pin(self) -> None:
         mod = self._selected_mod
@@ -835,10 +841,10 @@ class ModsPage(BasePage):
         try:
             if mod.pinned_version:
                 self.services.mods.set_pinned_version(mod.id, None)
-                self.toast("已解除版本锁定。", "success")
+                self.toast(tr('ui.pages.mods.version_unlocked'), "success")
             else:
                 self.services.mods.set_pinned_version(mod.id, mod.version)
-                self.toast(f"已锁定在 {mod.version}。", "success")
+                self.toast(tr('ui.pages.mods.locked_at_0', mod.version), "success")
         except Exception as exc:
             self.error(str(exc))
             return
@@ -851,12 +857,12 @@ class ModsPage(BasePage):
         try:
             if mod.ignored_version:
                 self.services.mods.clear_update_ignore(mod.id)
-                self.toast("已清除忽略版本。", "success")
+                self.toast(tr('ui.pages.mods.ignored_version_cleared'), "success")
             elif mod.latest_version:
                 self.services.mods.ignore_version(mod.id, mod.latest_version)
-                self.toast(f"已忽略版本 {mod.latest_version}。", "success")
+                self.toast(tr('ui.pages.mods.version_0_ignored', mod.latest_version), "success")
             else:
-                self.toast("请先检查更新，再忽略具体版本。", "warning")
+                self.toast(tr('ui.pages.mods.please_check_for_updates_before_ignoring_a_specific_b26063'), "warning")
         except Exception as exc:
             self.error(str(exc))
             return
@@ -883,30 +889,30 @@ class ModsPage(BasePage):
 
         def restore(backup) -> None:  # type: ignore[no-untyped-def]
             if not self.confirm(
-                "恢复备份",
-                f"恢复“{backup.label}”？\n\n当前文件会先自动备份，然后恢复所选版本。",
+                tr('ui.pages.mods.restore_backup'),
+                tr('ui.pages.mods.restore_0_the_current_files_are_backed_up_automatica_073f46', backup.label),
                 danger=True,
             ):
                 return
             self.tasks.run(
-                "恢复备份",
+                tr('ui.pages.mods.restore_backup'),
                 lambda: self.services.mods.rollback(backup.id),
                 on_done=lambda _result: self._after_restore(),
                 on_error=self.error,
             )
 
         def delete(backup) -> None:  # type: ignore[no-untyped-def]
-            if not self.confirm("删除备份", f"永久删除备份文件？\n{backup.path}", danger=True):
+            if not self.confirm(tr('ui.pages.mods.delete_backup'), tr('ui.pages.mods.permanently_delete_backup_files_0', backup.path), danger=True):
                 return
             try:
                 self.services.backups.delete(backup.id)
-                self.toast("备份已删除。", "success")
+                self.toast(tr('ui.pages.mods.backup_deleted'), "success")
             except Exception as exc:
                 self.error(str(exc))
 
         BackupsDialog(backups, self, on_restore=restore, on_delete=delete).exec()
 
     def _after_restore(self) -> None:
-        self.toast("备份恢复完成，已重新扫描。", "success")
+        self.toast(tr('ui.pages.mods.backup_restored_and_rescan_complete'), "success")
         self.controller.on_data_changed()
         self.refresh()

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from .icons import icon
 from .theme import theme_colors
+from ..i18n import tr
 
 
 def current_theme() -> str:
@@ -361,7 +362,7 @@ def make_scroll_content(parent: QWidget) -> tuple[QWidget, QVBoxLayout]:
     return wrapper, layout
 
 
-def set_busy(button: QPushButton, busy: bool, busy_text: str = "处理中…") -> None:
+def set_busy(button: QPushButton, busy: bool, busy_text: str = tr('ui.widgets.processing')) -> None:
     if busy:
         if not button.property("_original_text"):
             button.setProperty("_original_text", button.text())

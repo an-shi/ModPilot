@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QWidget
+from ...i18n import tr
 
 if TYPE_CHECKING:
     from ..main_window import MainWindow
 
 
 class BasePage(QWidget):
-    title = "页面"
+    title = tr('ui.pages.base.page')
     subtitle = ""
 
     def __init__(self, controller: MainWindow, parent: QWidget | None = None) -> None:
@@ -49,9 +50,9 @@ class BasePage(QWidget):
     def error(self, message: str) -> None:
         from PySide6.QtWidgets import QMessageBox
 
-        QMessageBox.warning(self, "操作失败", message)
+        QMessageBox.warning(self, tr('ui.pages.base.operation_failed'), message)
 
-    def info(self, message: str, title: str = "提示") -> None:
+    def info(self, message: str, title: str = tr('ui.pages.base.tip')) -> None:
         from PySide6.QtWidgets import QMessageBox
 
         QMessageBox.information(self, title, message)
@@ -63,14 +64,14 @@ class BasePage(QWidget):
         box.setWindowTitle(title)
         box.setText(message)
         box.setIcon(QMessageBox.Warning if danger else QMessageBox.Question)
-        yes = box.addButton("确认", QMessageBox.AcceptRole)
-        cancel = box.addButton("取消", QMessageBox.RejectRole)
+        yes = box.addButton(tr('ui.pages.base.confirm'), QMessageBox.AcceptRole)
+        cancel = box.addButton(tr('ui.pages.base.cancel'), QMessageBox.RejectRole)
         box.setDefaultButton(cancel)
         box.exec()
         return box.clickedButton() is yes
 
     def require_game(self) -> int | None:
         if self.game_id is None:
-            self.error("请先在“游戏管理”中添加并选择一个游戏。")
+            self.error(tr('ui.pages.base.please_add_and_select_a_game_in_game_management_firs_dfb125'))
             return None
         return self.game_id
